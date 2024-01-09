@@ -1,0 +1,17 @@
+[package]
+name = "forgefix"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = { version = "1.0.69", features = ["backtrace"] }
+chrono = "0.4.26"
+lazy_static = "1.4.0"
+regex = "1.9.1"
+rusqlite = { version = "0.28.0", features = ["chrono"] }
+thiserror = "1.0.44"
+tokio = { version = "1.29.1", features = ["net", "macros", "rt", "rt-multi-thread", "io-util", "time", "fs"] }
+tokio-rusqlite = "0.3.0"
+

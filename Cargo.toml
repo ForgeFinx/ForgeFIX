@@ -1,0 +1,4 @@
+[workspace]
+members = ["forgefix", "forgefix-at", "forgefix-c"]
+resolver = "2"
+
