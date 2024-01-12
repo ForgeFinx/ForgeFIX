@@ -190,7 +190,7 @@ pub struct FixApplicationHandle {
 }
 
 impl FixApplicationHandle {
-    pub fn start(&mut self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
+    pub fn start(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
         if self.request_sender.is_closed() {
             return Err(ApplicationError::SessionEnded);
         }
@@ -200,7 +200,7 @@ impl FixApplicationHandle {
         Ok(resp_receiver)
     }
 
-    pub async fn start_async(&mut self) -> Result<(), ApplicationError> {
+    pub async fn start_async(&self) -> Result<(), ApplicationError> {
         let resp_sender = self.start()?;
         if Ok(true) != resp_sender.await {
             return Err(ApplicationError::LogonFailed);
@@ -209,7 +209,7 @@ impl FixApplicationHandle {
     }
 
     pub fn send_message(
-        &mut self,
+        &self,
         builder: MessageBuilder,
     ) -> Result<oneshot::Receiver<bool>, ApplicationError> {
         if self.request_sender.is_closed() {
@@ -225,7 +225,7 @@ impl FixApplicationHandle {
     }
 
     pub async fn send_message_async(
-        &mut self,
+        &self,
         builder: MessageBuilder,
     ) -> Result<(), ApplicationError> {
         let resp_sender = self.send_message(builder)?;
@@ -235,14 +235,14 @@ impl FixApplicationHandle {
         Ok(())
     }
 
-    pub fn end(&mut self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
+    pub fn end(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
         let (resp_sender, resp_receiver) = oneshot::channel();
         let logout_request = Request::Logout { resp_sender };
         let _ = self.request_sender.send(logout_request);
         Ok(resp_receiver)
     }
 
-    pub async fn end_async(&mut self) -> Result<(), ApplicationError> {
+    pub async fn end_async(&self) -> Result<(), ApplicationError> {
         let resp_sender = self.end()?;
         if Ok(true) != resp_sender.await {
             return Err(ApplicationError::LogoutFailed);
