@@ -17,9 +17,10 @@ for safety as well as robust community and excellend compiler.
 # Features
 * FIX 4.2 -- Full message and field support for FIX 4.2.   Session managment, including sequence number negotiation and message resend.
 * Database-backed message store -- All valid and processed messages are stored in a local database (Sqlite currently), both to support message resend and offline auditing and querying.
-* File logging – All messages sent, and all received on the wire, whether valid or not, are written a log file for offline auditing.
+* File logging –- All messages sent, and all received on the wire, whether valid or not, are written a log file for offline auditing.
 * Async Rust API -- Async API for Rust code compatible with the Tokio runtime
 * C API -- API for use with C code, or through FFI with many others (Python, Go, etc.)
+* Testing Suite -- Run multiple test-cases against the ForgeFIX to confirm adherence to FIX 4.2 spec. 
 
 # Status
 ForgeFIX is feature complete, and is used in production carrying live orders.  Please consider it--however--to be a beta release until version 1.0 is released.  API changes
@@ -35,4 +36,4 @@ brokers and exchanges, but is not set in stone.  If you have a use case for one 
  * In-message encryption -- The FIX protocol allows for message bodies to be encrypted.  In practice this is rarely used.  Much more common is channel encryption (like a VPN), private network links, or both.
  * Message body validation -- A buy side firm is typically sending orders to a counterparty and receiving back 'execution reports'.  A badly formed order message is rejected
  by the counterparty and garners a Reject (3) or ExecutionReport (8), indicating the error.  Assuming an order is well-formed, a broker may respond with an ExecutionReport that is 'malformed' according to the agreed-upon variant of the FIX protocol.   Nothing good comes from rejecting this ExecutionReport.  A buy side firm should do its best to process the execution report, and address the validation issue out-of-band with the counterparty.
- *Automatic reconnection -- One feature of a FIX session is that it can survive multiple tcp disconnections, expected or unexpected. With automatic reconnection, YYY would be able to handle a TCP disconnection gracefully, without intervention from the client code. However, a TCP disconnection is currently returned as an error in YYY, and would have to manually reconnect to the FIX session.
+ * Automatic reconnection -- One feature of a FIX session is that it can survive multiple tcp disconnections, expected or unexpected. With automatic reconnection, ForgeFIX would be able to handle a TCP disconnection gracefully, without intervention from the client code. However, a TCP disconnection is currently returned as an error in ForgeFIX, and would have to manually reconnect to the FIX session.

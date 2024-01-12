@@ -17,9 +17,11 @@ c_fix_error send_order(
     const char* account); 
 
 
-int main() {
+int main(int argc, char *argv[]) {
 
     c_fix_error err; 
+    char *log = argv[1]; 
+    char *store = argv[2];
 
     session_settings_builder_t builder = session_settings_builder_new();
     ssb_set_sender_comp_id(builder, "TW");
@@ -27,8 +29,8 @@ int main() {
     ssb_set_socket_addr(builder, "127.0.0.1:9000");
     ssb_set_begin_string(builder, "FIX.4.2");
     ssb_set_epoch(builder, "999");
-    ssb_set_store_path(builder, "/tmp/store/");
-    ssb_set_log_dir(builder, "./log"); 
+    ssb_set_store_path(builder, store);
+    ssb_set_log_dir(builder, log); 
     ssb_set_heartbeat_timeout(builder, 30); 
     ssb_set_start_time(builder, "23:59:59"); 
 

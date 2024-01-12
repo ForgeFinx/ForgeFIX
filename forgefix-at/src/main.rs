@@ -132,7 +132,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
 
         loop {
             let (fix_handle, mut event_receiver) = fix_server.accept().await?;
-            tokio::spawn(async move {
+            let h = tokio::spawn(async move {
                 let _ = fix_handle.start_async().await;
                 while event_receiver.recv().await.is_some() {
                     let default_msg_type: char = fix::generated::MsgType::ORDER_SINGLE.into();
@@ -149,6 +149,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
                     let _ = fix_handle.send_message(builder);
                 }
             });
+            let _ = h.await;
         }
     } else {
         // forgefix PUBLIC API IN USE HERE

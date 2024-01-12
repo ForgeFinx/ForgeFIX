@@ -5,3 +5,5 @@ logs
 log
 fix_client
 Cargo.lock
+test/quickfix.diff
+store
