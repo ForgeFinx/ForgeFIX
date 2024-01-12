@@ -131,7 +131,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
         let mut fix_server = FixApplicationAcceptor::build(settings)?;
 
         loop {
-            let (mut fix_handle, mut event_receiver) = fix_server.accept().await?;
+            let (fix_handle, mut event_receiver) = fix_server.accept().await?;
             tokio::spawn(async move {
                 let _ = fix_handle.start_async().await;
                 while event_receiver.recv().await.is_some() {
@@ -153,7 +153,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
     } else {
         // forgefix PUBLIC API IN USE HERE
 
-        let (mut fix_handle, mut event_receiver) = FixApplicationInitiator::build(settings)?
+        let (fix_handle, mut event_receiver) = FixApplicationInitiator::build(settings)?
             .initiate()
             .await?;
 
@@ -166,7 +166,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
         fix_handle.start_async().await?;
 
         let _ = send_order(
-            &mut fix_handle,
+            &fix_handle,
             "ID1",
             1,
             "AAPL  230803P00100000",
@@ -179,7 +179,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
         let _ = send_order(
-            &mut fix_handle,
+            &fix_handle,
             "ID2",
             1,
             "AAPL  230803P00100000",
@@ -199,7 +199,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
 
 #[allow(clippy::too_many_arguments)]
 async fn send_order(
-    fix_app_client: &mut FixApplicationHandle,
+    fix_app_client: &FixApplicationHandle,
     sguid: &str,
     qty: u32,
     symbol: &str,
