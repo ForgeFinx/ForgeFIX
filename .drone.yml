@@ -1,0 +1,6 @@
+pipeline:
+  forge_fix:
+    image: amilar/droneimg:v28
+    commands:
+      - cargo build --verbose --all
+      - cargo test --verbose --all
