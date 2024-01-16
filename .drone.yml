@@ -1,6 +1,6 @@
 pipeline:
   forge_fix:
-    image: droneimg:v1
+    image: droneimg:v1-sccache
     commands:
       - cargo build --verbose --all
       - cargo test --verbose --all
