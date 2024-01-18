@@ -199,7 +199,6 @@ impl FixApplicationHandle {
         let _ = self.request_sender.send(logon_request);
         Ok(resp_receiver)
     }
-
     pub async fn start_async(&self) -> Result<(), ApplicationError> {
         let resp_sender = self.start()?;
         if Ok(true) != resp_sender.await {
@@ -207,6 +206,14 @@ impl FixApplicationHandle {
         }
         Ok(())
     }
+    pub fn start_sync(&self) -> Result<(), ApplicationError> {
+        let resp_receiver = self.start()?; 
+        if Ok(true) != resp_receiver.blocking_recv() {
+            return Err(ApplicationError::LogonFailed);
+        }
+        Ok(())
+    }
+    
 
     pub fn send_message(
         &self,
@@ -223,13 +230,22 @@ impl FixApplicationHandle {
         let _ = self.request_sender.send(send_message_request);
         Ok(resp_receiver)
     }
-
     pub async fn send_message_async(
         &self,
         builder: MessageBuilder,
     ) -> Result<(), ApplicationError> {
         let resp_sender = self.send_message(builder)?;
         if Ok(true) != resp_sender.await {
+            return Err(ApplicationError::SendMessageFailed);
+        }
+        Ok(())
+    }
+    pub fn send_message_sync(
+        &self,
+        builder: MessageBuilder,
+    ) -> Result<(), ApplicationError> {
+        let resp_receiver = self.send_message(builder)?;
+        if Ok(true) != resp_receiver.blocking_recv() {
             return Err(ApplicationError::SendMessageFailed);
         }
         Ok(())
@@ -241,10 +257,16 @@ impl FixApplicationHandle {
         let _ = self.request_sender.send(logout_request);
         Ok(resp_receiver)
     }
-
     pub async fn end_async(&self) -> Result<(), ApplicationError> {
         let resp_sender = self.end()?;
         if Ok(true) != resp_sender.await {
+            return Err(ApplicationError::LogoutFailed);
+        }
+        Ok(())
+    }
+    pub fn end_sync(&self) -> Result<(), ApplicationError> {
+        let resp_receiver = self.end()?;
+        if Ok(true) != resp_receiver.blocking_recv() {
             return Err(ApplicationError::LogoutFailed);
         }
         Ok(())
@@ -303,6 +325,46 @@ impl FixApplicationInitiator {
         };
 
         Ok((handle, app_message_event_receiver))
+    }
+
+    pub fn initiate_with_runtime(
+        self,
+        runtime: tokio::runtime::Runtime, 
+    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
+    {
+        let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
+        let (app_message_event_sender, app_message_event_receiver) =
+            mpsc::unbounded_channel::<Arc<MsgBuf>>();
+        let begin_string = Arc::clone(&self.settings.begin_string); 
+        let stream = runtime.block_on(self.stream_factory.stream())?;
+        
+        std::thread::spawn(move || {
+            if let Err(e) = runtime.block_on(fix::spin_session(
+                    stream,
+                    request_receiver,
+                    app_message_event_sender,
+                    self.settings,
+            ))
+            {
+                eprintln!("{e:?}");
+            }
+        }); 
+        let handle = FixApplicationHandle {
+            request_sender,
+            begin_string,
+        };
+
+        Ok((handle, app_message_event_receiver))
+    }
+
+    pub fn initiate_sync(
+        self
+    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> 
+    {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?; 
+        self.initiate_with_runtime(runtime)
     }
 }
 

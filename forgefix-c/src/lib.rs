@@ -6,8 +6,6 @@ use std::ffi::{c_char, c_ulong, CStr};
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use tokio::runtime::Runtime;
-
 const TIME_FORMAT: &str = "%H:%M:%S";
 
 #[repr(C)]
@@ -103,43 +101,33 @@ pub unsafe extern "C" fn fix_app_client_send_message(
         return CFixError::NullPointer;
     }
     let builder: MessageBuilder = *Box::from_raw(builder);
-    let res = (*client)
-        .runtime
-        .block_on((*client).inner.send_message_async(builder))
-        .into();
-    res
+    (*client).send_message(builder).into()
 }
 
 pub struct BlockingFixApplicationClient {
     inner: FixApplicationHandle,
-    runtime: Runtime,
 }
 
 impl BlockingFixApplicationClient {
     #[allow(clippy::too_many_arguments)]
     pub fn build(settings: SessionSettings) -> Result<BlockingFixApplicationClient, ApplicationError> {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()?;
-
         let fix_app_initiator = FixApplicationInitiator::build(settings)?;
-        let (inner, mut event_receiver) = runtime.block_on(fix_app_initiator.initiate())?;
+        let (inner, mut event_receiver) = fix_app_initiator.initiate_sync()?; 
         event_receiver.close();
 
-        Ok(BlockingFixApplicationClient { inner, runtime })
+        Ok(BlockingFixApplicationClient { inner })
     }
 
     pub fn start(&mut self) -> Result<(), ApplicationError> {
-        self.runtime.block_on(self.inner.start_async())
+        self.inner.start_sync()
     }
 
     pub fn end(&mut self) -> Result<(), ApplicationError> {
-        self.runtime.block_on(self.inner.end_async())
+        self.inner.end_sync()
     }
 
     pub fn send_message(&mut self, builder: MessageBuilder) -> Result<(), ApplicationError> {
-        self.runtime
-            .block_on(self.inner.send_message_async(builder))
+        self.inner.send_message_sync(builder)
     }
 }
 
