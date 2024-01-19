@@ -3,6 +3,7 @@ use forgefix::{
     fix,
     fix::generated::{MsgType, Tags},
     SessionSettings, FixApplicationAcceptor, FixApplicationHandle, FixApplicationInitiator,
+    fix::decode::parse_field,
 };
 use std::error::Error;
 use std::net::SocketAddr;
@@ -89,7 +90,7 @@ impl<'a> fix::decode::ParserCallback<'a> for ApplicationParserCallback<'a> {
     fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, fix::SessionError> {
         if let Ok(fix::generated::Tags::MsgSeqNum) = key.try_into() {
             self.msg_seq_num =
-                forgefix::parse_field!(u32, value).or(Err(fix::SessionError::MissingMsgSeqNum {
+                parse_field::<u32>(value).or(Err(fix::SessionError::MissingMsgSeqNum {
                     text: String::from("Missing MsgSeqNum"),
                 }))?;
         }

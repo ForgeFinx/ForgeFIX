@@ -324,6 +324,14 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> Result<ParsedPeek, SessionEr
     })
 }
 
+pub fn parse_field<T>(field: &[u8]) -> Result<T> 
+where
+    T: std::str::FromStr,
+    <T as std::str::FromStr>::Err: std::fmt::Debug
+{
+    std::str::from_utf8(field)?.parse::<T>().map_err(|e| anyhow::anyhow!("{e:?}"))
+}
+
 pub(super) fn parse_sending_time(sending_time_bytes: &[u8]) -> Result<DateTime<Utc>> {
     let sending_time_str = std::str::from_utf8(sending_time_bytes)?;
     let sending_time = NaiveDateTime::parse_from_str(sending_time_str, TIME_FORMAT_SHORT).or(

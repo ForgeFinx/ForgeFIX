@@ -7,7 +7,7 @@ use tokio::sync::{mpsc, oneshot};
 use anyhow::{bail, Result};
 use thiserror::Error;
 
-use crate::fix::decode::parse_sending_time;
+use crate::fix::decode::{parse_field, parse_sending_time};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
 use crate::fix::generated::{
     is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags,
@@ -41,13 +41,6 @@ mod stopwatch;
 mod store;
 mod stream;
 mod validate;
-
-#[macro_export]
-macro_rules! parse_field {
-    ( $typ:ty, $msg:expr  ) => {
-        unsafe { std::str::from_utf8_unchecked($msg).parse::<$typ>() }
-    };
-}
 
 #[derive(Debug, Error)]
 pub enum SessionError {
@@ -143,7 +136,7 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
             }
             Ok(Tags::MsgSeqNum) => {
                 self.msg_seq_num =
-                    parse_field!(u32, value).or(Err(SessionError::MissingMsgSeqNum {
+                    parse_field::<u32>(value).or(Err(SessionError::MissingMsgSeqNum {
                         text: String::from("Missing MsgSeqNum"),
                     }))?;
             }
@@ -207,7 +200,7 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
             }
             Ok(Tags::NewSeqNo) => {
                 self.new_seq_no =
-                    Some(parse_field!(u32, value).or(Err(self.create_message_reject(
+                    Some(parse_field::<u32>(value).or(Err(self.create_message_reject(
                         SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE,
                         Tags::NewSeqNo,
                     )))?);
@@ -217,28 +210,28 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
             }
             Ok(Tags::BeginSeqNo) => {
                 self.begin_seq_no =
-                    Some(parse_field!(u32, value).or(Err(self.create_message_reject(
+                    Some(parse_field::<u32>(value).or(Err(self.create_message_reject(
                         SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE,
                         Tags::BeginSeqNo,
                     )))?);
             }
             Ok(Tags::EndSeqNo) => {
                 self.end_seq_no =
-                    Some(parse_field!(u32, value).or(Err(self.create_message_reject(
+                    Some(parse_field::<u32>(value).or(Err(self.create_message_reject(
                         SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE,
                         Tags::EndSeqNo,
                     )))?);
             }
             Ok(Tags::HeartBtInt) => {
                 self.heart_bt_int =
-                    Some(parse_field!(u32, value).or(Err(self.create_message_reject(
+                    Some(parse_field::<u32>(value).or(Err(self.create_message_reject(
                         SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE,
                         Tags::HeartBtInt,
                     )))?)
             }
             Ok(Tags::EncryptMethod) => {
                 self.encrypt_method =
-                    Some(parse_field!(u32, value).or(Err(self.create_message_reject(
+                    Some(parse_field::<u32>(value).or(Err(self.create_message_reject(
                         SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE,
                         Tags::EndSeqNo,
                     )))?);

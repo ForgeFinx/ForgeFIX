@@ -255,12 +255,10 @@ mod test {
             .await
             .expect("building");
         cur.flush().await.unwrap();
-        unsafe {
-            assert_eq!(
-                String::from_utf8_unchecked(buf),
-                "8=FIX.4.2\x019=49\x0135=Q\x0134=1\x0152=19700101-00:00:00.000\x0144=fqwe\x0188=43\x0110=245\x01"
-            );
-        }
+        assert_eq!(
+            String::from_utf8(buf).unwrap(),
+            "8=FIX.4.2\x019=49\x0135=Q\x0134=1\x0152=19700101-00:00:00.000\x0144=fqwe\x0188=43\x0110=245\x01"
+        );
     }
 
     #[tokio::test]

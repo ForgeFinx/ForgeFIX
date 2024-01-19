@@ -150,17 +150,15 @@ mod test {
             t.build_async(&mut cur).await.expect("building");
             cur.flush().await.unwrap();
 
-            unsafe {
-                assert_eq!(
-                    std::str::from_utf8_unchecked(&buf[..buf.len() - 7])[..25],
-                    std::str::from_utf8_unchecked(&expected[..expected.len() - 7])[0..25]
-                );
+            assert_eq!(
+                std::str::from_utf8(&buf[..buf.len() - 7]).unwrap()[..25],
+                std::str::from_utf8(&expected[..expected.len() - 7]).unwrap()[0..25]
+            );
 
-                assert_eq!(
-                    std::str::from_utf8_unchecked(&buf[..buf.len() - 7])[49..],
-                    std::str::from_utf8_unchecked(&expected[..buf.len() - 7])[49..],
-                );
-            }
+            assert_eq!(
+                std::str::from_utf8(&buf[..buf.len() - 7]).unwrap()[49..],
+                std::str::from_utf8(&expected[..buf.len() - 7]).unwrap()[49..],
+            );
         }
     }
 }
