@@ -1,3 +1,8 @@
+//! Modules implementing the FIX spec for [encoding] and [decoding] messages
+//!
+//! [encoding]: crate::fix::encode
+//! [decoding]: crate::fix::decode
+
 use chrono::{DateTime, Utc};
 use chrono::naive::NaiveDateTime;
 use tokio::io::AsyncWriteExt;

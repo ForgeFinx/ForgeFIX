@@ -1,3 +1,5 @@
+//! FIX [`Tags`], [`MsgType`], and values. 
+
 mod fields;
 pub use fields::*;
 impl MsgType {
