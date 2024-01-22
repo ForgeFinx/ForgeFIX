@@ -1,3 +1,13 @@
+//! Message decoding and parsing
+//!
+//! Application messages that come off the wire are stored in a [`MsgBuf`]. Message buffers are just wrappers
+//! around a [`Vec<u8>`], and have yet to be parsed and verified. In order to extract the tag/value
+//! pairs from a message, it must be parsed using the [`parse`] function which accepts a [`MsgBuf`]
+//! and a [`ParserCallback`]. The callback defines which tags to parse, implements how to parse the value 
+//! and can either save the value, or return an error. 
+//!
+//! [`MsgBuf`]: crate::fix::mem::MsgBuf
+
 use crate::fix::generated::{get_data_ref, SessionRejectReason};
 use crate::fix::{GarbledMessageType, SessionError};
 use anyhow::{format_err, Result};
@@ -123,6 +133,9 @@ impl<'a, 'i, 'x> FieldIter<'a, 'i, 'x> {
     }
 }
 
+/// A trait that allows custom parsing of a [`MsgBuf`] 
+///
+/// [`MsgBuf`]: crate::fix::mem::MsgBuf
 pub trait ParserCallback<'a> {
     fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, SessionError>;
     fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, SessionError>;
@@ -130,6 +143,7 @@ pub trait ParserCallback<'a> {
     fn sequence_num(&self) -> u32;
 }
 
+/// A default implementation of [`ParserCallback`]
 pub struct NullParserCallback;
 
 impl<'a> ParserCallback<'a> for NullParserCallback {
@@ -147,6 +161,9 @@ impl<'a> ParserCallback<'a> for NullParserCallback {
     }
 }
 
+/// Parse a [`MsgBuf`] with a [`ParserCallback`]
+///
+/// [`MsgBuf`]: crate::fix::mem::MsgBuf
 pub fn parse<'a>(
     msg: &'a [u8],
     callbacks: &mut impl ParserCallback<'a>,
@@ -324,6 +341,9 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> Result<ParsedPeek, SessionEr
     })
 }
 
+/// Attempts to parse a FIX value into any type that `impl`'s [`FromStr`]
+///
+/// [`FromStr`]: std::str::FromStr
 pub fn parse_field<T>(field: &[u8]) -> Result<T> 
 where
     T: std::str::FromStr,

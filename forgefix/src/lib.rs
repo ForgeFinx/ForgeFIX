@@ -1,3 +1,102 @@
+//! An opinionated FIX 4.2 client library for the buy-side. 
+//!
+//! ForgeFIX is an engine that implements a subset of the FIX protocol which allows users to connect
+//! to brokers or exchanges to send and receive messages.
+//!
+//! ## Terminology
+//! * `FIX Connection` -- A single connection to a FIX Session. A network connection is made over TCP, 
+//! then a FIX logon handshake is performed to establish the FIX connection. The FIX connection
+//! ends properly with a FIX logout, but is considered ended if the TCP connection breaks. 
+//!     * Note, the term 'connection' is overloaded and can also mean TCP connection. When unclear, a
+//! 'connection' will be specified as TCP or FIX. 
+//!
+//! * `FIX Session` -- A conceptual construct that represents the bidirectional stream of ordered
+//! messages between two peers. A FIX Session can live across multiple instances of a FIX
+//! connection. 
+//!
+//! * `FIX Engine` -- A sub-process running in the background that manages a single FIX connection
+//! to a FIX Session. The engine starts, runs, and ends the FIX connection as defined by the FIX
+//! protocol, and manages all resources that support the connection. 
+//!
+//! ## Examples
+//!
+//! ### Asynchronous API
+//! ```no_run
+//! use forgefix::{
+//!     SessionSettings, FixApplicationHandle, FixApplicationInitiator, ApplicationError,
+//! }; 
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), ApplicationError> {
+//!     
+//!     // build session settings 
+//!     let settings = SessionSettings::builder()
+//!         .with_sender_comp_id("my_id")
+//!         .with_target_comp_id("peer_id")
+//!         .with_store_path("./store".into())
+//!         .with_log_dir("./log".into())
+//!         .with_socket_addr("127.0.0.1:0".parse().unwrap())
+//!         .build()?; 
+//!
+//!     // create a FIX engine and intiate TCP connection
+//!     let (fix_handle, mut event_receiver) = FixApplicationInitiator::build(settings)?
+//!         .initiate()
+//!         .await?;
+//!
+//!     // handle incoming messages in the background...
+//!     tokio::spawn(async move {
+//!         while let Some(msg) = event_receiver.recv().await {
+//!             println!("got an application message: {}", msg);
+//!         }
+//!     });
+//!
+//!     // start the FIX connection
+//!     fix_handle.start_async().await?;
+//!
+//!     // send messages here...
+//!
+//!     // end the FIX connection
+//!     fix_handle.end_async().await?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ### Synchronous API
+//! ```no_run
+//! use forgefix::{
+//!     SessionSettings, FixApplicationHandle, FixApplicationInitiator, ApplicationError,
+//! }; 
+//!
+//! fn main() -> Result<(), ApplicationError> {
+//!
+//!     let settings = SessionSettings::builder()
+//!         .with_sender_comp_id("my_id")
+//!         .with_target_comp_id("peer_id")
+//!         .with_store_path("./store".into())
+//!         .with_log_dir("./log".into())
+//!         .with_socket_addr("127.0.0.1:0".parse().unwrap())
+//!         .build()?; 
+//!
+//!     let (fix_handle, mut event_receiver) = FixApplicationInitiator::build(settings)?
+//!         .initiate_sync()?; 
+//!
+//!     std::thread::spawn(move || {
+//!         while let Some(msg) = event_receiver.blocking_recv() {
+//!             println!("got an application message: {}", msg); 
+//!         }
+//!     }); 
+//!
+//!     fix_handle.start_sync()?; 
+//!
+//!     // send messages here...
+//!
+//!     fix_handle.end_sync()?;
+//!     
+//!     Ok(())
+//! }
+//! ```
+
 pub mod fix;
 use fix::encode::MessageBuilder;
 use fix::mem::MsgBuf;
@@ -26,6 +125,7 @@ enum Request {
     },
 }
 
+/// Errors that can occur while running ForgeFIX. 
 #[derive(Debug, Error)]
 pub enum ApplicationError {
     #[error("An I/O error occured")]
@@ -42,6 +142,9 @@ pub enum ApplicationError {
     SettingRequired(String),
 }
 
+/// A collection of settings used to configurate a FIX session. 
+///
+/// `SessionSettings` can be constructed using the [`SessionSettingsBuilder`], or can be constructed explicitly. 
 #[derive(Clone)]
 pub struct SessionSettings {
     begin_string: Arc<String>, 
@@ -56,6 +159,14 @@ pub struct SessionSettings {
     start_time: NaiveTime, 
 }
 
+/// A builder for easily configuring all the fields of a [`SessionSettings`]
+///
+/// The following settings are required to be set: 
+/// * sender comp id
+/// * target comp id
+/// * addr
+/// * store path
+/// * log dir
 #[derive(Default)]
 pub struct SessionSettingsBuilder {
     sender_comp_id: Option<String>,
@@ -75,6 +186,7 @@ impl SessionSettingsBuilder {
         Default::default()
     }
 
+    /// The time the FIX session starts each day. 
     pub fn with_start_time(mut self, start_time: NaiveTime) -> Self {
         self.set_start_time(start_time);
         self
@@ -83,6 +195,7 @@ impl SessionSettingsBuilder {
         self.start_time = Some(start_time); 
     }
 
+    /// The `SenderCompID(49)` that will be included in each message. 
     pub fn with_sender_comp_id(mut self, sender_comp_id: &str) -> Self {
         self.set_sender_comp_id(sender_comp_id);
         self
@@ -91,6 +204,7 @@ impl SessionSettingsBuilder {
         self.sender_comp_id = Some(sender_comp_id.to_string());
     }
 
+    /// The `TargetCompID(56)` that will be included in each message. 
     pub fn with_target_comp_id(mut self, target_comp_id: &str) -> Self {
         self.set_target_comp_id(target_comp_id);
         self
@@ -99,6 +213,7 @@ impl SessionSettingsBuilder {
         self.target_comp_id = Some(target_comp_id.to_string());
     }
 
+    /// The address to initiate a connection to, or accept connections on. 
     pub fn with_socket_addr(mut self, addr: SocketAddr) -> Self {
         self.addr = Some(addr);
         self
@@ -107,6 +222,7 @@ impl SessionSettingsBuilder {
         self.addr = Some(addr);
     }
 
+    /// The `BeginString(8)` that will be included in each message. 
     pub fn with_begin_string(mut self, begin_string: &str) -> Self {
         self.set_begin_string(begin_string);
         self
@@ -115,6 +231,7 @@ impl SessionSettingsBuilder {
         self.begin_string = Some(begin_string.to_string());
     }
 
+    /// A local unique identifier for this FIX session. 
     pub fn with_epoch(mut self, epoch: &str) -> Self {
         self.set_epoch(epoch);
         self
@@ -123,6 +240,7 @@ impl SessionSettingsBuilder {
         self.epoch = Some(epoch.to_string());
     }
 
+    /// The file that should be used as the sqlite database file. 
     pub fn with_store_path(mut self, store_path: PathBuf) -> Self {
         self.set_store_path(store_path);
         self
@@ -131,6 +249,7 @@ impl SessionSettingsBuilder {
         self.store_path = Some(store_path);
     }
 
+    /// The directory that should be used to create log files. 
     pub fn with_log_dir(mut self, log_dir: PathBuf) -> Self {
         self.set_log_dir(log_dir);
         self
@@ -139,6 +258,7 @@ impl SessionSettingsBuilder {
         self.log_dir = Some(log_dir); 
     }
 
+    /// The timeout length used for sending `Heartbeat<0>` messages. 
     pub fn with_heartbeat_timeout(mut self, hb_timeout: Duration) -> Self {
         self.set_heartbeat_timeout(hb_timeout);
         self
@@ -147,6 +267,10 @@ impl SessionSettingsBuilder {
         self.heartbeat_timeout = Some(hb_timeout);
     }
 
+    /// Build the [`SessionSettings`] struct. 
+    ///
+    /// Returns an `Err(ApplicationError::SettingRequired)` if not all of the required fields
+    /// were set.
     pub fn build(self) -> Result<SessionSettings, ApplicationError> {
         let sender_comp_id = self.sender_comp_id.ok_or(ApplicationError::SettingRequired("sender_comp_id".to_string()))?;
         let target_comp_id = self.target_comp_id.ok_or(ApplicationError::SettingRequired("target_comp_id".to_string()))?;
@@ -170,6 +294,7 @@ impl SessionSettingsBuilder {
 }
 
 impl SessionSettings {
+    /// Creates a new [`SessionSettingsBuilder`]
     pub fn builder() -> SessionSettingsBuilder {
         SessionSettingsBuilder::new()    
     }
@@ -183,6 +308,77 @@ impl SessionSettings {
     }
 }
 
+/// A handle on a FIX engine instance. 
+///
+/// The [`FixApplicationHandle`] allows for requesting the basic operations of starting the FIX connection, sending
+/// a message to the peer, and ending the connection. 
+///
+/// The handle offers asynchronous and synchronous APIs for these operations. As well as functions
+/// that return immedietly with a [`oneshot::Receiver`] that will eventually return the result of the
+/// operation. 
+///
+/// The underlying engine could stop running at any moment for a variety of reasons. Only until you
+/// attempt an operation, will you learn the engine has stopped by receiving an
+/// [`ApplicationError::SessionEnded`]. 
+///
+/// [`FixApplicationHandle`] `impl`'s [`Clone`], [`Send`] and [`Sync`] and therefore multiple
+/// copies of the handle can be made and passed to different threads that can all request messages
+/// to be sent. Only one thread has to call [`end`] for the engine to terminate the connection. 
+///
+/// [`oneshot::Receiver`]: https://docs.rs/tokio/latest/tokio/sync/oneshot/struct.Receiver.html
+/// [`end`]: FixApplicationHandle::end
+///
+/// # Example
+///
+///```no_run
+/// use forgefix::{
+///     SessionSettings, FixApplicationInitiator, ApplicationError
+/// }; 
+/// use forgefix::fix::{encode::MessageBuilder, generated::MsgType};
+/// # use anyhow::Result; 
+/// # #[tokio::main]
+/// # async fn main() -> Result<()> {
+/// #    let settings = SessionSettings::builder()
+/// #        .with_sender_comp_id("my_id")
+/// #        .with_target_comp_id("peer_id")
+/// #        .with_store_path("./store".into())
+/// #        .with_log_dir("./log".into())
+/// #        .with_socket_addr("127.0.0.1:0".parse().unwrap())
+/// #        .build()?; 
+///
+/// let (handle, mut receiver) = FixApplicationInitiator::build(settings)?
+///     .initiate()
+///     .await?; 
+/// receiver.close();
+///
+/// let handle1 = handle.clone(); 
+/// let handle2 = handle.clone(); 
+///
+/// let h1 = tokio::spawn(async move {
+///     let builder = MessageBuilder::new(
+///         &handle1.begin_string(), 
+///         MsgType::ORDER_SINGLE.into()
+///     );
+///     handle1.send_message_async(builder).await
+/// }); 
+///
+/// let h2 = tokio::spawn(async move {
+///     let builder = MessageBuilder::new(
+///         &handle2.begin_string(), 
+///         MsgType::ORDER_SINGLE.into()
+///     );
+///     handle2.send_message_async(builder).await
+/// }); 
+///
+/// let (res1, res2) = tokio::join!(h1, h2); 
+/// res1??;
+/// res2??;
+///     
+/// handle.end_async().await?;
+///  #   Ok(())
+/// # }
+///
+///```
 #[derive(Clone)]
 pub struct FixApplicationHandle {
     request_sender: mpsc::UnboundedSender<Request>,
@@ -190,6 +386,10 @@ pub struct FixApplicationHandle {
 }
 
 impl FixApplicationHandle {
+    /// Send a request to the engine to start the connection and return immediately. 
+    ///
+    /// The receiver will eventually yield `true` if a connection was successfully established, or
+    /// `false` othersize. 
     pub fn start(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
         if self.request_sender.is_closed() {
             return Err(ApplicationError::SessionEnded);
@@ -199,6 +399,7 @@ impl FixApplicationHandle {
         let _ = self.request_sender.send(logon_request);
         Ok(resp_receiver)
     }
+    /// Send a request to the engine to start the connection and await asynchronously. 
     pub async fn start_async(&self) -> Result<(), ApplicationError> {
         let resp_sender = self.start()?;
         if Ok(true) != resp_sender.await {
@@ -206,6 +407,7 @@ impl FixApplicationHandle {
         }
         Ok(())
     }
+    /// Send a request to the engine to start a connection, and block until a result is returned. 
     pub fn start_sync(&self) -> Result<(), ApplicationError> {
         let resp_receiver = self.start()?; 
         if Ok(true) != resp_receiver.blocking_recv() {
@@ -215,6 +417,15 @@ impl FixApplicationHandle {
     }
     
 
+    /// Send a request to the engine to send the message in the [`MessageBuilder`] to the peer, and return immediately. 
+    ///
+    /// If the request was successfully sent to the engine, a [`oneshot::Receiver`] will be
+    /// returned. 
+    ///
+    /// The receiver will yield `true` once the message has successfully sent over the TCP
+    /// connection. It will yeild `false` if a message cannot be sent. 
+    ///
+    /// [`oneshot::Receiver`]: https://docs.rs/tokio/latest/tokio/sync/oneshot/struct.Receiver.html
     pub fn send_message(
         &self,
         builder: MessageBuilder,
@@ -230,6 +441,7 @@ impl FixApplicationHandle {
         let _ = self.request_sender.send(send_message_request);
         Ok(resp_receiver)
     }
+    /// Send a request to the engine to send the message in `builder` and await asynchronously. 
     pub async fn send_message_async(
         &self,
         builder: MessageBuilder,
@@ -240,6 +452,8 @@ impl FixApplicationHandle {
         }
         Ok(())
     }
+    /// Send a request to the engine to send the message in `builder` and block until a result is
+    /// returned.
     pub fn send_message_sync(
         &self,
         builder: MessageBuilder,
@@ -251,12 +465,22 @@ impl FixApplicationHandle {
         Ok(())
     }
 
+    /// Send a request to the engine to end the FIX connection, and return immediately. 
+    ///
+    /// If the request was successfully send to the engine, a [`oneshot::Receiver`] will be
+    /// returned. 
+    ///
+    /// The receiver will yield `true` is the FIX connection is over, and ended without any issues.
+    /// Otherwise it will be `false`. 
+    ///
+    /// [`oneshot::Receiver`]: https://docs.rs/tokio/latest/tokio/sync/oneshot/struct.Receiver.html
     pub fn end(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
         let (resp_sender, resp_receiver) = oneshot::channel();
         let logout_request = Request::Logout { resp_sender };
         let _ = self.request_sender.send(logout_request);
         Ok(resp_receiver)
     }
+    /// Send a request to the engine to end the FIX connection, and await asynchronously. 
     pub async fn end_async(&self) -> Result<(), ApplicationError> {
         let resp_sender = self.end()?;
         if Ok(true) != resp_sender.await {
@@ -264,6 +488,8 @@ impl FixApplicationHandle {
         }
         Ok(())
     }
+    /// Send a request to the engine to end the FIX connection, and block until a result is
+    /// returned.
     pub fn end_sync(&self) -> Result<(), ApplicationError> {
         let resp_receiver = self.end()?;
         if Ok(true) != resp_receiver.blocking_recv() {
@@ -272,17 +498,20 @@ impl FixApplicationHandle {
         Ok(())
     }
 
+    /// Get the `BeginString(8)` of this FIX Session. Should generally be `"FIX.4.2"`. 
     pub fn begin_string(&self) -> Arc<String> {
         Arc::clone(&self.begin_string)
     }
 }
 
+/// A struct that can initiate the TCP connection to the peer and create a FIX engine instance. 
 pub struct FixApplicationInitiator {
     settings: SessionSettings,
     stream_factory: StreamFactory,
 }
 
 impl FixApplicationInitiator {
+    /// Build a `FixApplicationInitiator` that will create a FIX engine using `settings`.
     #[allow(clippy::too_many_arguments)]
     pub fn build(
         mut settings: SessionSettings,
@@ -296,6 +525,18 @@ impl FixApplicationInitiator {
         Ok(fix_app_client)
     }
 
+    /// Initiate a TCP connection and start the FIX engine with the current asynchronous runtime.
+    ///
+    /// If the connection is successfully made, a [`FixApplicationHandle`] will be returned, and an
+    /// `UnboundedReceiver<Arc<MsgBuf>>` will be returned. 
+    ///
+    /// The application handle can be used to start the FIX connection, send messages and end the
+    /// connection. 
+    ///
+    /// The receiver is a channel where all incoming, valid application messages can be received.
+    /// If you do not want to use the channel, it is recommended you call [`close`]. 
+    ///
+    /// [`close`]: tokio::sync::mpsc::UnboundedReceiver::close
     pub async fn initiate(
         self,
     ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
@@ -327,6 +568,7 @@ impl FixApplicationInitiator {
         Ok((handle, app_message_event_receiver))
     }
 
+    /// Initiate a TCP connection and start the FIX engine that will be driven by `runtime`. 
     pub fn initiate_with_runtime(
         self,
         runtime: tokio::runtime::Runtime, 
@@ -357,6 +599,7 @@ impl FixApplicationInitiator {
         Ok((handle, app_message_event_receiver))
     }
 
+    /// Initiate a TCP connection, and a runtime will be created internally to drive the engine. 
     pub fn initiate_sync(
         self
     ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> 
@@ -368,12 +611,14 @@ impl FixApplicationInitiator {
     }
 }
 
+/// A struct that can accept TCP connections, and create a FIX engine instance for each connection. 
 pub struct FixApplicationAcceptor {
     settings: SessionSettings,
     stream_factory: StreamFactory,
 }
 
 impl FixApplicationAcceptor {
+    /// Build a `FixApplicationAcceptor` from `settings`. 
     #[allow(clippy::too_many_arguments)]
     pub fn build(
         mut settings: SessionSettings,
@@ -387,6 +632,10 @@ impl FixApplicationAcceptor {
         Ok(fix_app_server)
     }
 
+    /// Accept an incoming TCP connection and create a FIX engine. 
+    ///
+    /// Returns the handle to the created engine, and a channel to receive all valid, incoming application
+    /// messages. 
     pub async fn accept(
         &mut self,
     ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
