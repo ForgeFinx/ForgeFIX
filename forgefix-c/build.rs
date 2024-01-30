@@ -31,6 +31,7 @@ fn main() {
         enumeration: enum_config,
         parse: parse_config,
         export: export_config.clone(),
+        documentation: false,
         ..Default::default()
     };
 

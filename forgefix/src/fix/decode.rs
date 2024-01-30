@@ -4,9 +4,66 @@
 //! around a [`Vec<u8>`], and have yet to be parsed and verified. In order to extract the tag/value
 //! pairs from a message, it must be parsed using the [`parse`] function which accepts a [`MsgBuf`]
 //! and a [`ParserCallback`]. The callback defines which tags to parse, implements how to parse the value 
-//! and can either save the value, or return an error. 
+//! and can save values, and handle error cases. 
 //!
 //! [`MsgBuf`]: crate::fix::mem::MsgBuf
+//!
+//! # Example
+//!
+//! ```rust
+//! use anyhow::{Error, bail}; 
+//!
+//! use forgefix::fix::decode::{ParserCallback, parse_field, parse, ParseError}; 
+//! use forgefix::fix::generated::{Tags, MsgType, ExecType, OrdStatus};
+//!
+//! struct ExecutionReportParser<'a> {
+//!     order_id: &'a str,
+//!     order_status: OrdStatus,
+//!     exec_type: ExecType,
+//!     qty_filled: f32,
+//! }
+//!
+//! impl<'a> ParserCallback<'a> for ExecutionReportParser<'a> {
+//!     type Err = Error; 
+//!
+//!     // parse and save any header fields...
+//!     fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
+//!         if let Ok(Tags::MsgType) = key.try_into() {
+//!             let msg_type = parse_field::<char>(value)?.try_into()?; 
+//!             if !matches!(msg_type, MsgType::EXECUTION_REPORT) {
+//!                 bail!("not an execution report message");
+//!             }
+//!         }
+//!         Ok(true)
+//!     }
+//!
+//!     // parse and save any body fields...
+//!     fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
+//!         match key.try_into() {
+//!             Ok(Tags::OrderID) => self.order_id = std::str::from_utf8(value)?, 
+//!             Ok(Tags::OrdStatus) => {
+//!                 self.order_status = parse_field::<char>(value)?.try_into()?;
+//!             }
+//!             Ok(Tags::ExecType) => {
+//!                 self.exec_type = parse_field::<char>(value)?.try_into()?;
+//!             }
+//!             Ok(Tags::CumQty) => self.qty_filled = parse_field::<f32>(value)?, 
+//!             _ => {}
+//!         }
+//!         Ok(true)
+//!     }
+//!
+//!     // parse and save any trailer fields...
+//!     fn trailer(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
+//!         Ok(true)
+//!     }
+//!
+//!     // if the message is malformed, catch the error and handle it...
+//!     fn parse_error(&mut self, _err: ParseError) -> Result<(), Self::Err> {
+//!         bail!("message is malformed");
+//!     }
+//! }
+//! ```
 
 use crate::fix::generated::{get_data_ref};
 use crate::fix::{GarbledMessageType, SessionError};
@@ -123,9 +180,22 @@ pub enum ParseError {
     BadLengthField(u32), 
 }
 
-/// A trait that allows custom parsing of a [`MsgBuf`] 
+/// A trait that allows custom parsing of a [`MsgBuf`]
+///
+/// The `ParserCallback` contains methods that get called for certain parsing events. For example,
+/// if a header field is found, the [`header`] function will be called. In the event of a
+/// [`ParseError`], the [`parse_error`] function is called. 
+///
+/// For the [`header`], [`body`] and [`trailer`] functions, the returned boolean is a signal to the parser
+/// to continue or to stop. If `Ok(true)` is returned, the parser will continue. If `Ok(false)` is
+/// returned, the parser will stop, and return `Ok(())`. If any of these functions return an `Err`,
+/// the parser will stop and return the `Err`.
 ///
 /// [`MsgBuf`]: crate::fix::mem::MsgBuf
+/// [`header`]: ParserCallback::header
+/// [`body`]: ParserCallback::body
+/// [`trailer`]: ParserCallback::trailer
+/// [`parse_error`]: ParserCallback::parse_error
 pub trait ParserCallback<'a> {
     type Err; 
 
@@ -324,7 +394,40 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> Result<ParsedPeek, SessionEr
 
 /// Attempts to parse a FIX value into any type that `impl`'s [`FromStr`]
 ///
+/// In order to parse a field into an enum like [`MsgType`], parse the field into an [`char`] and
+/// then try converting the [`char`] into a [`MsgType`].
+///
+/// In order to parse a field into a [`String`], use `parse_field`. However, to parse into a
+/// [`&str`], it is recommended to use [`from_utf8`]. 
+///
 /// [`FromStr`]: std::str::FromStr
+/// [`MsgType`]: crate::fix::generated::MsgType
+/// [`from_utf8`]: std::str::from_utf8
+///
+/// # Example
+///
+/// ```rust
+/// # use forgefix::fix::generated::{OrdStatus, MsgType}; 
+/// # use forgefix::fix::decode::parse_field;
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let msg_type_field = b"A"; 
+///     let msg_type: MsgType = parse_field::<char>(msg_type_field)?.try_into()?; 
+///     assert_eq!(msg_type, MsgType::LOGON); 
+///
+///     let price_field = b"1.13"; 
+///     let price = parse_field::<f32>(price_field)?; 
+///     assert_eq!(price, 1.13f32); 
+///
+///     let ord_status_field = b"0"; 
+///     let ord_status: OrdStatus = parse_field::<char>(ord_status_field)?.try_into()?;
+///     assert_eq!(ord_status, OrdStatus::NEW); 
+///
+///     let order_id_field = b"abc123"; 
+///     let order_id: &str = std::str::from_utf8(order_id_field)?; 
+///     assert_eq!(order_id, "abc123"); 
+///     # Ok(())
+/// # }
+/// ```
 pub fn parse_field<T>(field: &[u8]) -> Result<T> 
 where
     T: std::str::FromStr,
