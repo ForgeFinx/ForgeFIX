@@ -5,6 +5,8 @@
 #![allow(non_camel_case_types, dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 
+use crate::fix::decode::DecodeError; 
+
 <xsl:apply-templates />
 </xsl:template>
 
@@ -23,11 +25,11 @@ pub enum Tags {
    <xsl:for-each select="field"><xsl:value-of select="@name"/> = <xsl:value-of select="@number"/>,</xsl:for-each>
 }
 impl TryFrom&lt;u32&gt; for Tags {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(u : u32) -> Result&lt;Self, Self::Error&gt; {
     match u {
     <xsl:for-each select="field"><xsl:value-of select="@number"/> => Ok(Tags::<xsl:value-of select="@name"/>),</xsl:for-each>
-    _=> anyhow::bail!("illegal value for Tag")
+    _=> Err(DecodeError::UnknownTag(u)), 
         }
     }
 }
@@ -80,11 +82,11 @@ impl From&lt;<xsl:value-of select="./@name" />&gt; for &amp;'static [u8] {
 }
 
 impl TryFrom&lt;char&gt; for <xsl:value-of select="./@name" /> {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c : char) -> Result&lt;Self, Self::Error&gt; {
     match c {
     <xsl:for-each select="value">'<xsl:value-of select="./@enum"/>' => Ok(Self::<xsl:value-of select="./@description"/>),</xsl:for-each>
-    _=> anyhow::bail!("illegal value for field")
+    _=> Err(DecodeError::UnknownChar(Tags::<xsl:value-of select="./@name"/>, c)),
         }
     }
 }
@@ -101,11 +103,11 @@ pub enum <xsl:value-of select="./@name" /> {
 }
 <xsl:if test="*">
 impl TryFrom&lt;u8&gt; for <xsl:value-of select="./@name" /> {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c : u8) -> Result&lt;Self, Self::Error&gt; {
     match c {
     <xsl:for-each select="value"><xsl:value-of select="./@enum"/> => Ok(Self::<xsl:value-of select="./@description"/>),</xsl:for-each>
-    _=> anyhow::bail!("illegal value for field")
+    _=> Err(DecodeError::UnknownInt(Tags::<xsl:value-of select="./@name"/>, c)),
         }
     }
 }

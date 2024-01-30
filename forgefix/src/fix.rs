@@ -12,7 +12,7 @@ use tokio::sync::{mpsc, oneshot};
 use anyhow::{bail, Result};
 use thiserror::Error;
 
-use crate::fix::decode::{parse_field, parse_sending_time, ParseError};
+use crate::fix::decode::{parse_field, parse_sending_time};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
 use crate::fix::generated::{
     is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags,
@@ -259,9 +259,9 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
         Ok(false)
     }
 
-    fn parse_error(&mut self, err: decode::ParseError) -> Result<(), Self::Err> {
+    fn parse_error(&mut self, err: decode::MessageParseError) -> Result<(), Self::Err> {
         match err {
-            ParseError::BadLengthField(tag) => {
+            decode::MessageParseError::BadLengthField(tag, _) => {
                 Err(SessionError::new_message_rejected(
                     Some(SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE),
                     self.msg_seq_num,
@@ -269,7 +269,7 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
                     None,
                 ))
             }
-            ParseError::InvalidCharacter => {
+            decode::MessageParseError::UnexpectedByte(..) => {
                 Err(SessionError::GarbledMessage {
                    text: "invalid character in message".to_string(),
                    garbled_msg_type: GarbledMessageType::Other,

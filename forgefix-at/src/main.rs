@@ -3,7 +3,7 @@ use forgefix::{
     fix,
     fix::generated::{MsgType, Tags},
     SessionSettings, FixApplicationAcceptor, FixApplicationHandle, FixApplicationInitiator,
-    fix::decode::{ParseError, parse_field},
+    fix::decode::{parse_field},
 };
 use std::error::Error;
 use std::net::SocketAddr;
@@ -104,7 +104,7 @@ impl<'a> fix::decode::ParserCallback<'a> for ApplicationParserCallback<'a> {
     fn trailer(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, Self::Err> {
         Ok(false)
     }
-    fn parse_error(&mut self, err: ParseError) -> Result<(), Self::Err> {
+    fn parse_error(&mut self, err: fix::decode::MessageParseError) -> Result<(), Self::Err> {
         Err(format!("parser error: {:?}", err))
     }
 }

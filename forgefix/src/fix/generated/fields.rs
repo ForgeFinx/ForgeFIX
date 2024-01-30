@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types, dead_code)]
 #![allow(clippy::upper_case_acronyms)]
 
+use crate::fix::decode::DecodeError;
+
 pub fn is_session_message(msg_type: char) -> bool {
     matches!(msg_type, '0' | '1' | '2' | '3' | '4' | '5' | 'A')
 }
@@ -415,7 +417,7 @@ pub enum Tags {
     EncodedListStatusText = 446,
 }
 impl TryFrom<u32> for Tags {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(u: u32) -> Result<Self, Self::Error> {
         match u {
             1 => Ok(Tags::Account),
@@ -823,7 +825,7 @@ impl TryFrom<u32> for Tags {
             444 => Ok(Tags::ListStatusText),
             445 => Ok(Tags::EncodedListStatusTextLen),
             446 => Ok(Tags::EncodedListStatusText),
-            _ => anyhow::bail!("illegal value for Tag"),
+            _ => Err(DecodeError::UnknownTag(u)),
         }
     }
 }
@@ -881,14 +883,14 @@ impl From<AdvSide> for &'static [u8] {
 }
 
 impl TryFrom<char> for AdvSide {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'B' => Ok(Self::BUY),
             'S' => Ok(Self::SELL),
             'T' => Ok(Self::TRADE),
             'X' => Ok(Self::CROSS),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::AdvSide, c)),
         }
     }
 }
@@ -918,13 +920,13 @@ impl From<CommType> for &'static [u8] {
 }
 
 impl TryFrom<char> for CommType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::PER_SHARE),
             '2' => Ok(Self::PERCENTAGE),
             '3' => Ok(Self::ABSOLUTE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::CommType, c)),
         }
     }
 }
@@ -956,14 +958,14 @@ impl From<ExecTransType> for &'static [u8] {
 }
 
 impl TryFrom<char> for ExecTransType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::NEW),
             '1' => Ok(Self::CANCEL),
             '2' => Ok(Self::CORRECT),
             '3' => Ok(Self::STATUS),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ExecTransType, c)),
         }
     }
 }
@@ -993,13 +995,13 @@ impl From<HandlInst> for &'static [u8] {
 }
 
 impl TryFrom<char> for HandlInst {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION),
             '2' => Ok(Self::AUTOMATED_EXECUTION_ORDER_PUBLIC_BROKER_INTERVENTION_OK),
             '3' => Ok(Self::MANUAL_ORDER_BEST_EXECUTION),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::HandlInst, c)),
         }
     }
 }
@@ -1029,13 +1031,13 @@ impl From<IOIQltyInd> for &'static [u8] {
 }
 
 impl TryFrom<char> for IOIQltyInd {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'H' => Ok(Self::HIGH),
             'L' => Ok(Self::LOW),
             'M' => Ok(Self::MEDIUM),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::IOIQltyInd, c)),
         }
     }
 }
@@ -1065,13 +1067,13 @@ impl From<IOITransType> for &'static [u8] {
 }
 
 impl TryFrom<char> for IOITransType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'C' => Ok(Self::CANCEL),
             'N' => Ok(Self::NEW),
             'R' => Ok(Self::REPLACE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::IOITransType, c)),
         }
     }
 }
@@ -1103,14 +1105,14 @@ impl From<LastCapacity> for &'static [u8] {
 }
 
 impl TryFrom<char> for LastCapacity {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::AGENT),
             '2' => Ok(Self::CROSS_AS_AGENT),
             '3' => Ok(Self::CROSS_AS_PRINCIPAL),
             '4' => Ok(Self::PRINCIPAL),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::LastCapacity, c)),
         }
     }
 }
@@ -1226,7 +1228,7 @@ impl From<MsgType> for &'static [u8] {
 }
 
 impl TryFrom<char> for MsgType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::HEARTBEAT),
@@ -1275,7 +1277,7 @@ impl TryFrom<char> for MsgType {
             'X' => Ok(Self::MARKET_DATA_INCREMENTAL_REFRESH),
             'Y' => Ok(Self::MARKET_DATA_REQUEST_REJECT),
             'Z' => Ok(Self::QUOTE_CANCEL),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::MsgType, c)),
         }
     }
 }
@@ -1329,7 +1331,7 @@ impl From<OrdStatus> for &'static [u8] {
 }
 
 impl TryFrom<char> for OrdStatus {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::NEW),
@@ -1347,7 +1349,7 @@ impl TryFrom<char> for OrdStatus {
             'C' => Ok(Self::EXPIRED),
             'D' => Ok(Self::ACCEPTED_FOR_BIDDING),
             'E' => Ok(Self::PENDING_REPLACE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::OrdStatus, c)),
         }
     }
 }
@@ -1409,7 +1411,7 @@ impl From<OrdType> for &'static [u8] {
 }
 
 impl TryFrom<char> for OrdType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::MARKET),
@@ -1431,7 +1433,7 @@ impl TryFrom<char> for OrdType {
             'H' => Ok(Self::FOREX_H),
             'I' => Ok(Self::FUNARI),
             'P' => Ok(Self::PEGGED),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::OrdType, c)),
         }
     }
 }
@@ -1459,12 +1461,12 @@ impl From<PossDupFlag> for &'static [u8] {
 }
 
 impl TryFrom<char> for PossDupFlag {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::PossDupFlag, c)),
         }
     }
 }
@@ -1537,11 +1539,11 @@ impl From<Rule80A> for &'static [u8] {
 }
 
 impl TryFrom<char> for Rule80A {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
     'A' => Ok(Self::AGENCY_SINGLE_ORDER),'B' => Ok(Self::SHORT_EXEMPT_TRANSACTION_B),'C' => Ok(Self::PROGRAM_ORDER_NON_INDEX_ARB_FOR_MEMBER_FIRM_ORG),'D' => Ok(Self::PROGRAM_ORDER_INDEX_ARB_FOR_MEMBER_FIRM_ORG),'E' => Ok(Self::REGISTERED_EQUITY_MARKET_MAKER_TRADES),'F' => Ok(Self::SHORT_EXEMPT_TRANSACTION_F),'H' => Ok(Self::SHORT_EXEMPT_TRANSACTION_H),'I' => Ok(Self::INDIVIDUAL_INVESTOR_SINGLE_ORDER),'J' => Ok(Self::PROGRAM_ORDER_INDEX_ARB_FOR_INDIVIDUAL_CUSTOMER),'K' => Ok(Self::PROGRAM_ORDER_NON_INDEX_ARB_FOR_INDIVIDUAL_CUSTOMER),'L' => Ok(Self::SHORT_EXEMPT_TRANSACTION_FOR_MEMBER_COMPETING_MARKET_MAKER_AFFILIATED_WITH_THE_FIRM_CLEARING_THE_TRADE),'M' => Ok(Self::PROGRAM_ORDER_INDEX_ARB_FOR_OTHER_MEMBER),'N' => Ok(Self::PROGRAM_ORDER_NON_INDEX_ARB_FOR_OTHER_MEMBER),'O' => Ok(Self::COMPETING_DEALER_TRADES_O),'P' => Ok(Self::PRINCIPAL),'R' => Ok(Self::COMPETING_DEALER_TRADES_R),'S' => Ok(Self::SPECIALIST_TRADES),'T' => Ok(Self::COMPETING_DEALER_TRADES_T),'U' => Ok(Self::PROGRAM_ORDER_INDEX_ARB_FOR_OTHER_AGENCY),'W' => Ok(Self::ALL_OTHER_ORDERS_AS_AGENT_FOR_OTHER_MEMBER),'X' => Ok(Self::SHORT_EXEMPT_TRANSACTION_FOR_MEMBER_COMPETING_MARKET_MAKER_NOT_AFFILIATED_WITH_THE_FIRM_CLEARING_THE_TRADE),'Y' => Ok(Self::PROGRAM_ORDER_NON_INDEX_ARB_FOR_OTHER_AGENCY),'Z' => Ok(Self::SHORT_EXEMPT_TRANSACTION_FOR_NON_MEMBER_COMPETING_MARKET_MAKER),
-    _=> anyhow::bail!("illegal value for field")
+    _=> Err(DecodeError::UnknownChar(Tags::Rule80A, c)),
         }
     }
 }
@@ -1583,7 +1585,7 @@ impl From<Side> for &'static [u8] {
 }
 
 impl TryFrom<char> for Side {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::BUY),
@@ -1595,7 +1597,7 @@ impl TryFrom<char> for Side {
             '7' => Ok(Self::UNDISCLOSED),
             '8' => Ok(Self::CROSS),
             '9' => Ok(Self::CROSS_SHORT),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::Side, c)),
         }
     }
 }
@@ -1633,7 +1635,7 @@ impl From<TimeInForce> for &'static [u8] {
 }
 
 impl TryFrom<char> for TimeInForce {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::DAY),
@@ -1643,7 +1645,7 @@ impl TryFrom<char> for TimeInForce {
             '4' => Ok(Self::FILL_OR_KILL),
             '5' => Ok(Self::GOOD_TILL_CROSSING),
             '6' => Ok(Self::GOOD_TILL_DATE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::TimeInForce, c)),
         }
     }
 }
@@ -1673,13 +1675,13 @@ impl From<Urgency> for &'static [u8] {
 }
 
 impl TryFrom<char> for Urgency {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::NORMAL),
             '1' => Ok(Self::FLASH),
             '2' => Ok(Self::BACKGROUND),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::Urgency, c)),
         }
     }
 }
@@ -1723,7 +1725,7 @@ impl From<SettlmntTyp> for &'static [u8] {
 }
 
 impl TryFrom<char> for SettlmntTyp {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::REGULAR),
@@ -1736,7 +1738,7 @@ impl TryFrom<char> for SettlmntTyp {
             '7' => Ok(Self::WHEN_ISSUED),
             '8' => Ok(Self::SELLERS_OPTION),
             '9' => Ok(Self::T_PLUS_5),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::SettlmntTyp, c)),
         }
     }
 }
@@ -1772,7 +1774,7 @@ impl From<AllocTransType> for &'static [u8] {
 }
 
 impl TryFrom<char> for AllocTransType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::NEW),
@@ -1781,7 +1783,7 @@ impl TryFrom<char> for AllocTransType {
             '3' => Ok(Self::PRELIMINARY),
             '4' => Ok(Self::CALCULATED),
             '5' => Ok(Self::CALCULATED_WITHOUT_PRELIMINARY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::AllocTransType, c)),
         }
     }
 }
@@ -1809,12 +1811,12 @@ impl From<OpenClose> for &'static [u8] {
 }
 
 impl TryFrom<char> for OpenClose {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'C' => Ok(Self::CLOSE),
             'O' => Ok(Self::OPEN),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::OpenClose, c)),
         }
     }
 }
@@ -1852,7 +1854,7 @@ impl From<ProcessCode> for &'static [u8] {
 }
 
 impl TryFrom<char> for ProcessCode {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::REGULAR),
@@ -1862,7 +1864,7 @@ impl TryFrom<char> for ProcessCode {
             '4' => Ok(Self::SOFT_DOLLAR_STEP_IN),
             '5' => Ok(Self::SOFT_DOLLAR_STEP_OUT),
             '6' => Ok(Self::PLAN_SPONSOR),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ProcessCode, c)),
         }
     }
 }
@@ -1877,14 +1879,14 @@ pub enum AllocStatus {
 }
 
 impl TryFrom<u8> for AllocStatus {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::ACCEPTED),
             1 => Ok(Self::REJECTED),
             2 => Ok(Self::PARTIAL_ACCEPT),
             3 => Ok(Self::RECEIVED),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::AllocStatus, c)),
         }
     }
 }
@@ -1903,7 +1905,7 @@ pub enum AllocRejCode {
 }
 
 impl TryFrom<u8> for AllocRejCode {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::UNKNOWN_ACCOUNT),
@@ -1914,7 +1916,7 @@ impl TryFrom<u8> for AllocRejCode {
             5 => Ok(Self::UNKNOWN_ORDERID),
             6 => Ok(Self::UNKNOWN_LISTID),
             7 => Ok(Self::OTHER),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::AllocRejCode, c)),
         }
     }
 }
@@ -1944,13 +1946,13 @@ impl From<EmailType> for &'static [u8] {
 }
 
 impl TryFrom<char> for EmailType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::NEW),
             '1' => Ok(Self::REPLY),
             '2' => Ok(Self::ADMIN_REPLY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::EmailType, c)),
         }
     }
 }
@@ -1978,12 +1980,12 @@ impl From<PossResend> for &'static [u8] {
 }
 
 impl TryFrom<char> for PossResend {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::PossResend, c)),
         }
     }
 }
@@ -2001,7 +2003,7 @@ pub enum EncryptMethod {
 }
 
 impl TryFrom<u8> for EncryptMethod {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::NONE),
@@ -2011,7 +2013,7 @@ impl TryFrom<u8> for EncryptMethod {
             4 => Ok(Self::PGP_DES),
             5 => Ok(Self::PGP_DES_MD5),
             6 => Ok(Self::PEM_DES_MD5),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::EncryptMethod, c)),
         }
     }
 }
@@ -2026,14 +2028,14 @@ pub enum CxlRejReason {
 }
 
 impl TryFrom<u8> for CxlRejReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::TOO_LATE_TO_CANCEL),
             1 => Ok(Self::UNKNOWN_ORDER),
             2 => Ok(Self::BROKER_OPTION),
             3 => Ok(Self::ORDER_ALREADY_IN_PENDING_CANCEL_OR_PENDING_REPLACE_STATUS),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::CxlRejReason, c)),
         }
     }
 }
@@ -2053,7 +2055,7 @@ pub enum OrdRejReason {
 }
 
 impl TryFrom<u8> for OrdRejReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::BROKER_OPTION),
@@ -2065,7 +2067,7 @@ impl TryFrom<u8> for OrdRejReason {
             6 => Ok(Self::DUPLICATE_ORDER),
             7 => Ok(Self::DUPLICATE_OF_A_VERBALLY_COMMUNICATED_ORDER),
             8 => Ok(Self::STALE_ORDER),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::OrdRejReason, c)),
         }
     }
 }
@@ -2121,7 +2123,7 @@ impl From<IOIQualifier> for &'static [u8] {
 }
 
 impl TryFrom<char> for IOIQualifier {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'A' => Ok(Self::ALL_OR_NONE),
@@ -2140,7 +2142,7 @@ impl TryFrom<char> for IOIQualifier {
             'X' => Ok(Self::CROSSING_OPPORTUNITY),
             'Y' => Ok(Self::AT_THE_MIDPOINT),
             'Z' => Ok(Self::PRE_OPEN),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::IOIQualifier, c)),
         }
     }
 }
@@ -2168,12 +2170,12 @@ impl From<ReportToExch> for &'static [u8] {
 }
 
 impl TryFrom<char> for ReportToExch {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ReportToExch, c)),
         }
     }
 }
@@ -2201,12 +2203,12 @@ impl From<LocateReqd> for &'static [u8] {
 }
 
 impl TryFrom<char> for LocateReqd {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::LocateReqd, c)),
         }
     }
 }
@@ -2234,12 +2236,12 @@ impl From<ForexReq> for &'static [u8] {
 }
 
 impl TryFrom<char> for ForexReq {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ForexReq, c)),
         }
     }
 }
@@ -2267,12 +2269,12 @@ impl From<GapFillFlag> for &'static [u8] {
 }
 
 impl TryFrom<char> for GapFillFlag {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::GapFillFlag, c)),
         }
     }
 }
@@ -2308,7 +2310,7 @@ impl From<DKReason> for &'static [u8] {
 }
 
 impl TryFrom<char> for DKReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'A' => Ok(Self::UNKNOWN_SYMBOL),
@@ -2317,7 +2319,7 @@ impl TryFrom<char> for DKReason {
             'D' => Ok(Self::NO_MATCHING_ORDER),
             'E' => Ok(Self::PRICE_EXCEEDS_LIMIT),
             'Z' => Ok(Self::OTHER),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::DKReason, c)),
         }
     }
 }
@@ -2345,12 +2347,12 @@ impl From<IOINaturalFlag> for &'static [u8] {
 }
 
 impl TryFrom<char> for IOINaturalFlag {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::IOINaturalFlag, c)),
         }
     }
 }
@@ -2392,7 +2394,7 @@ impl From<MiscFeeType> for &'static [u8] {
 }
 
 impl TryFrom<char> for MiscFeeType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::REGULATORY),
@@ -2404,7 +2406,7 @@ impl TryFrom<char> for MiscFeeType {
             '7' => Ok(Self::OTHER),
             '8' => Ok(Self::MARKUP),
             '9' => Ok(Self::CONSUMPTION_TAX),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::MiscFeeType, c)),
         }
     }
 }
@@ -2432,12 +2434,12 @@ impl From<ResetSeqNumFlag> for &'static [u8] {
 }
 
 impl TryFrom<char> for ResetSeqNumFlag {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ResetSeqNumFlag, c)),
         }
     }
 }
@@ -2491,7 +2493,7 @@ impl From<ExecType> for &'static [u8] {
 }
 
 impl TryFrom<char> for ExecType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::NEW),
@@ -2509,7 +2511,7 @@ impl TryFrom<char> for ExecType {
             'C' => Ok(Self::EXPIRED),
             'D' => Ok(Self::RESTATED),
             'E' => Ok(Self::PENDING_REPLACE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ExecType, c)),
         }
     }
 }
@@ -2537,12 +2539,12 @@ impl From<SettlCurrFxRateCalc> for &'static [u8] {
 }
 
 impl TryFrom<char> for SettlCurrFxRateCalc {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'M' => Ok(Self::MULTIPLY),
             'D' => Ok(Self::DIVIDE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::SettlCurrFxRateCalc, c)),
         }
     }
 }
@@ -2574,14 +2576,14 @@ impl From<SettlInstMode> for &'static [u8] {
 }
 
 impl TryFrom<char> for SettlInstMode {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::DEFAULT),
             '1' => Ok(Self::STANDING_INSTRUCTIONS_PROVIDED),
             '2' => Ok(Self::SPECIFIC_ALLOCATION_ACCOUNT_OVERRIDING),
             '3' => Ok(Self::SPECIFIC_ALLOCATION_ACCOUNT_STANDING),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::SettlInstMode, c)),
         }
     }
 }
@@ -2611,13 +2613,13 @@ impl From<SettlInstTransType> for &'static [u8] {
 }
 
 impl TryFrom<char> for SettlInstTransType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'C' => Ok(Self::CANCEL),
             'N' => Ok(Self::NEW),
             'R' => Ok(Self::REPLACE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::SettlInstTransType, c)),
         }
     }
 }
@@ -2645,12 +2647,12 @@ impl From<SettlInstSource> for &'static [u8] {
 }
 
 impl TryFrom<char> for SettlInstSource {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::BROKERS_INSTRUCTIONS),
             '2' => Ok(Self::INSTITUTIONS_INSTRUCTIONS),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::SettlInstSource, c)),
         }
     }
 }
@@ -2665,14 +2667,14 @@ pub enum StandInstDbType {
 }
 
 impl TryFrom<u8> for StandInstDbType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::OTHER),
             1 => Ok(Self::DTC_SID),
             2 => Ok(Self::THOMSON_ALERT),
             3 => Ok(Self::A_GLOBAL_CUSTODIAN),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::StandInstDbType, c)),
         }
     }
 }
@@ -2685,12 +2687,12 @@ pub enum AllocLinkType {
 }
 
 impl TryFrom<u8> for AllocLinkType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::F_X_NETTING),
             1 => Ok(Self::F_X_SWAP),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::AllocLinkType, c)),
         }
     }
 }
@@ -2703,12 +2705,12 @@ pub enum PutOrCall {
 }
 
 impl TryFrom<u8> for PutOrCall {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::PUT),
             1 => Ok(Self::CALL),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::PutOrCall, c)),
         }
     }
 }
@@ -2721,12 +2723,12 @@ pub enum CoveredOrUncovered {
 }
 
 impl TryFrom<u8> for CoveredOrUncovered {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::COVERED),
             1 => Ok(Self::UNCOVERED),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::CoveredOrUncovered, c)),
         }
     }
 }
@@ -2739,12 +2741,12 @@ pub enum CustomerOrFirm {
 }
 
 impl TryFrom<u8> for CustomerOrFirm {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::CUSTOMER),
             1 => Ok(Self::FIRM),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::CustomerOrFirm, c)),
         }
     }
 }
@@ -2772,12 +2774,12 @@ impl From<NotifyBrokerOfCredit> for &'static [u8] {
 }
 
 impl TryFrom<char> for NotifyBrokerOfCredit {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::NotifyBrokerOfCredit, c)),
         }
     }
 }
@@ -2791,13 +2793,13 @@ pub enum AllocHandlInst {
 }
 
 impl TryFrom<u8> for AllocHandlInst {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::MATCH),
             2 => Ok(Self::FORWARD),
             3 => Ok(Self::FORWARD_AND_MATCH),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::AllocHandlInst, c)),
         }
     }
 }
@@ -2812,14 +2814,14 @@ pub enum RoutingType {
 }
 
 impl TryFrom<u8> for RoutingType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::TARGET_FIRM),
             2 => Ok(Self::TARGET_LIST),
             3 => Ok(Self::BLOCK_FIRM),
             4 => Ok(Self::BLOCK_LIST),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::RoutingType, c)),
         }
     }
 }
@@ -2861,7 +2863,7 @@ impl From<Benchmark> for &'static [u8] {
 }
 
 impl TryFrom<char> for Benchmark {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::CURVE),
@@ -2873,7 +2875,7 @@ impl TryFrom<char> for Benchmark {
             '7' => Ok(Self::OLD_30),
             '8' => Ok(Self::THREE_MO_LIBOR),
             '9' => Ok(Self::SIX_MO_LIBOR),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::Benchmark, c)),
         }
     }
 }
@@ -2903,13 +2905,13 @@ impl From<SubscriptionRequestType> for &'static [u8] {
 }
 
 impl TryFrom<char> for SubscriptionRequestType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::SNAPSHOT),
             '1' => Ok(Self::SNAPSHOT_PLUS_UPDATES),
             '2' => Ok(Self::DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::SubscriptionRequestType, c)),
         }
     }
 }
@@ -2922,12 +2924,12 @@ pub enum MDUpdateType {
 }
 
 impl TryFrom<u8> for MDUpdateType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::FULL_REFRESH),
             1 => Ok(Self::INCREMENTAL_REFRESH),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::MDUpdateType, c)),
         }
     }
 }
@@ -2955,12 +2957,12 @@ impl From<AggregatedBook> for &'static [u8] {
 }
 
 impl TryFrom<char> for AggregatedBook {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::AggregatedBook, c)),
         }
     }
 }
@@ -3004,7 +3006,7 @@ impl From<MDEntryType> for &'static [u8] {
 }
 
 impl TryFrom<char> for MDEntryType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::BID),
@@ -3017,7 +3019,7 @@ impl TryFrom<char> for MDEntryType {
             '7' => Ok(Self::TRADING_SESSION_HIGH_PRICE),
             '8' => Ok(Self::TRADING_SESSION_LOW_PRICE),
             '9' => Ok(Self::TRADING_SESSION_VWAP_PRICE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::MDEntryType, c)),
         }
     }
 }
@@ -3049,14 +3051,14 @@ impl From<TickDirection> for &'static [u8] {
 }
 
 impl TryFrom<char> for TickDirection {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::PLUS_TICK),
             '1' => Ok(Self::ZERO_PLUS_TICK),
             '2' => Ok(Self::MINUS_TICK),
             '3' => Ok(Self::ZERO_MINUS_TICK),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::TickDirection, c)),
         }
     }
 }
@@ -3086,13 +3088,13 @@ impl From<MDUpdateAction> for &'static [u8] {
 }
 
 impl TryFrom<char> for MDUpdateAction {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::NEW),
             '1' => Ok(Self::CHANGE),
             '2' => Ok(Self::DELETE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::MDUpdateAction, c)),
         }
     }
 }
@@ -3134,7 +3136,7 @@ impl From<MDReqRejReason> for &'static [u8] {
 }
 
 impl TryFrom<char> for MDReqRejReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::UNKNOWN_SYMBOL),
@@ -3146,7 +3148,7 @@ impl TryFrom<char> for MDReqRejReason {
             '6' => Ok(Self::UNSUPPORTED_MDUPDATETYPE),
             '7' => Ok(Self::UNSUPPORTED_AGGREGATEDBOOK),
             '8' => Ok(Self::UNSUPPORTED_MDENTRYTYPE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::MDReqRejReason, c)),
         }
     }
 }
@@ -3174,12 +3176,12 @@ impl From<DeleteReason> for &'static [u8] {
 }
 
 impl TryFrom<char> for DeleteReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::CANCELATION),
             '1' => Ok(Self::ERROR),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::DeleteReason, c)),
         }
     }
 }
@@ -3209,13 +3211,13 @@ impl From<OpenCloseSettleFlag> for &'static [u8] {
 }
 
 impl TryFrom<char> for OpenCloseSettleFlag {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::DAILY_OPEN),
             '1' => Ok(Self::SESSION_OPEN),
             '2' => Ok(Self::DELIVERY_SETTLEMENT_PRICE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::OpenCloseSettleFlag, c)),
         }
     }
 }
@@ -3241,11 +3243,11 @@ impl From<FinancialStatus> for &'static [u8] {
 }
 
 impl TryFrom<char> for FinancialStatus {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::BANKRUPT),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::FinancialStatus, c)),
         }
     }
 }
@@ -3279,7 +3281,7 @@ impl From<CorporateAction> for &'static [u8] {
 }
 
 impl TryFrom<char> for CorporateAction {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'A' => Ok(Self::EX_DIVIDEND),
@@ -3287,7 +3289,7 @@ impl TryFrom<char> for CorporateAction {
             'C' => Ok(Self::EX_RIGHTS),
             'D' => Ok(Self::NEW),
             'E' => Ok(Self::EX_INTEREST),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::CorporateAction, c)),
         }
     }
 }
@@ -3304,7 +3306,7 @@ pub enum QuoteAckStatus {
 }
 
 impl TryFrom<u8> for QuoteAckStatus {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::ACCEPTED),
@@ -3313,7 +3315,7 @@ impl TryFrom<u8> for QuoteAckStatus {
             3 => Ok(Self::CANCELED_FOR_UNDERLYING),
             4 => Ok(Self::CANCELED_ALL),
             5 => Ok(Self::REJECTED),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::QuoteAckStatus, c)),
         }
     }
 }
@@ -3328,14 +3330,14 @@ pub enum QuoteCancelType {
 }
 
 impl TryFrom<u8> for QuoteCancelType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::CANCEL_FOR_SYMBOL),
             2 => Ok(Self::CANCEL_FOR_SECURITY_TYPE),
             3 => Ok(Self::CANCEL_FOR_UNDERLYING_SYMBOL),
             4 => Ok(Self::CANCEL_FOR_ALL_QUOTES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::QuoteCancelType, c)),
         }
     }
 }
@@ -3355,7 +3357,7 @@ pub enum QuoteRejectReason {
 }
 
 impl TryFrom<u8> for QuoteRejectReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::UNKNOWN_SYMBOL),
@@ -3367,7 +3369,7 @@ impl TryFrom<u8> for QuoteRejectReason {
             7 => Ok(Self::INVALID_BID_ASK_SPREAD),
             8 => Ok(Self::INVALID_PRICE),
             9 => Ok(Self::NOT_AUTHORIZED_TO_QUOTE_SECURITY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::QuoteRejectReason, c)),
         }
     }
 }
@@ -3381,13 +3383,13 @@ pub enum QuoteResponseLevel {
 }
 
 impl TryFrom<u8> for QuoteResponseLevel {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::NO_ACKNOWLEDGEMENT),
             1 => Ok(Self::ACKNOWLEDGE_ONLY_NEGATIVE_OR_ERRONEOUS_QUOTES),
             2 => Ok(Self::ACKNOWLEDGE_EACH_QUOTE_MESSAGES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::QuoteResponseLevel, c)),
         }
     }
 }
@@ -3400,12 +3402,12 @@ pub enum QuoteRequestType {
 }
 
 impl TryFrom<u8> for QuoteRequestType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::MANUAL),
             2 => Ok(Self::AUTOMATIC),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::QuoteRequestType, c)),
         }
     }
 }
@@ -3420,14 +3422,14 @@ pub enum SecurityRequestType {
 }
 
 impl TryFrom<u8> for SecurityRequestType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::REQUEST_SECURITY_IDENTITY_AND_SPECIFICATIONS),
             1 => Ok(Self::REQUEST_SECURITY_IDENTITY_FOR_THE_SPECIFICATIONS_PROVIDED),
             2 => Ok(Self::REQUEST_LIST_SECURITY_TYPES),
             3 => Ok(Self::REQUEST_LIST_SECURITIES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::SecurityRequestType, c)),
         }
     }
 }
@@ -3444,7 +3446,7 @@ pub enum SecurityResponseType {
 }
 
 impl TryFrom<u8> for SecurityResponseType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::ACCEPT_SECURITY_PROPOSAL_AS_IS),
@@ -3453,7 +3455,7 @@ impl TryFrom<u8> for SecurityResponseType {
             4 => Ok(Self::LIST_OF_SECURITIES_RETURNED_PER_REQUEST),
             5 => Ok(Self::REJECT_SECURITY_PROPOSAL),
             6 => Ok(Self::CAN_NOT_MATCH_SELECTION_CRITERIA),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::SecurityResponseType, c)),
         }
     }
 }
@@ -3481,12 +3483,12 @@ impl From<UnsolicitedIndicator> for &'static [u8] {
 }
 
 impl TryFrom<char> for UnsolicitedIndicator {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::UnsolicitedIndicator, c)),
         }
     }
 }
@@ -3516,7 +3518,7 @@ pub enum SecurityTradingStatus {
 }
 
 impl TryFrom<u8> for SecurityTradingStatus {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::OPENING_DELAY),
@@ -3538,7 +3540,7 @@ impl TryFrom<u8> for SecurityTradingStatus {
             7 => Ok(Self::MARKET_IMBALANCE_BUY),
             8 => Ok(Self::MARKET_IMBALANCE_SELL),
             9 => Ok(Self::MARKET_ON_CLOSE_IMBALANCE_BUY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::SecurityTradingStatus, c)),
         }
     }
 }
@@ -3574,7 +3576,7 @@ impl From<HaltReasonChar> for &'static [u8] {
 }
 
 impl TryFrom<char> for HaltReasonChar {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'D' => Ok(Self::NEWS_DISSEMINATION),
@@ -3583,7 +3585,7 @@ impl TryFrom<char> for HaltReasonChar {
             'M' => Ok(Self::ADDITIONAL_INFORMATION),
             'P' => Ok(Self::NEWS_PENDING),
             'X' => Ok(Self::EQUIPMENT_CHANGEOVER),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::HaltReasonChar, c)),
         }
     }
 }
@@ -3611,12 +3613,12 @@ impl From<InViewOfCommon> for &'static [u8] {
 }
 
 impl TryFrom<char> for InViewOfCommon {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::InViewOfCommon, c)),
         }
     }
 }
@@ -3644,12 +3646,12 @@ impl From<DueToRelated> for &'static [u8] {
 }
 
 impl TryFrom<char> for DueToRelated {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::DueToRelated, c)),
         }
     }
 }
@@ -3663,13 +3665,13 @@ pub enum Adjustment {
 }
 
 impl TryFrom<u8> for Adjustment {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::CANCEL),
             2 => Ok(Self::ERROR),
             3 => Ok(Self::CORRECTION),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::Adjustment, c)),
         }
     }
 }
@@ -3683,13 +3685,13 @@ pub enum TradSesMethod {
 }
 
 impl TryFrom<u8> for TradSesMethod {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::ELECTRONIC),
             2 => Ok(Self::OPEN_OUTCRY),
             3 => Ok(Self::TWO_PARTY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::TradSesMethod, c)),
         }
     }
 }
@@ -3703,13 +3705,13 @@ pub enum TradSesMode {
 }
 
 impl TryFrom<u8> for TradSesMode {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::TESTING),
             2 => Ok(Self::SIMULATED),
             3 => Ok(Self::PRODUCTION),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::TradSesMode, c)),
         }
     }
 }
@@ -3725,7 +3727,7 @@ pub enum TradSesStatus {
 }
 
 impl TryFrom<u8> for TradSesStatus {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::HALTED),
@@ -3733,7 +3735,7 @@ impl TryFrom<u8> for TradSesStatus {
             3 => Ok(Self::CLOSED),
             4 => Ok(Self::PRE_OPEN),
             5 => Ok(Self::PRE_CLOSE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::TradSesStatus, c)),
         }
     }
 }
@@ -3753,7 +3755,7 @@ pub enum QuoteEntryRejectReason {
 }
 
 impl TryFrom<u8> for QuoteEntryRejectReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::UNKNOWN_SYMBOL),
@@ -3765,7 +3767,7 @@ impl TryFrom<u8> for QuoteEntryRejectReason {
             7 => Ok(Self::INVALID_BID_ASK_SPREAD),
             8 => Ok(Self::INVALID_PRICE),
             9 => Ok(Self::NOT_AUTHORIZED_TO_QUOTE_SECURITY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::QuoteEntryRejectReason, c)),
         }
     }
 }
@@ -3788,7 +3790,7 @@ pub enum SessionRejectReason {
 }
 
 impl TryFrom<u8> for SessionRejectReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::INVALID_TAG_NUMBER),
@@ -3803,7 +3805,7 @@ impl TryFrom<u8> for SessionRejectReason {
             7 => Ok(Self::DECRYPTION_PROBLEM),
             8 => Ok(Self::SIGNATURE_PROBLEM),
             9 => Ok(Self::COMPID_PROBLEM),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::SessionRejectReason, c)),
         }
     }
 }
@@ -3831,12 +3833,12 @@ impl From<BidRequestTransType> for &'static [u8] {
 }
 
 impl TryFrom<char> for BidRequestTransType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'C' => Ok(Self::CANCEL),
             'N' => Ok(Self::NO),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::BidRequestTransType, c)),
         }
     }
 }
@@ -3864,12 +3866,12 @@ impl From<SolicitedFlag> for &'static [u8] {
 }
 
 impl TryFrom<char> for SolicitedFlag {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::SolicitedFlag, c)),
         }
     }
 }
@@ -3886,7 +3888,7 @@ pub enum ExecRestatementReason {
 }
 
 impl TryFrom<u8> for ExecRestatementReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::GT_CORPORATE_ACTION),
@@ -3895,7 +3897,7 @@ impl TryFrom<u8> for ExecRestatementReason {
             3 => Ok(Self::REPRICING_OF_ORDER),
             4 => Ok(Self::BROKER_OPTION),
             5 => Ok(Self::PARTIAL_DECLINE_OF_ORDERQTY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::ExecRestatementReason, c)),
         }
     }
 }
@@ -3912,7 +3914,7 @@ pub enum BusinessRejectReason {
 }
 
 impl TryFrom<u8> for BusinessRejectReason {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::OTHER),
@@ -3921,7 +3923,7 @@ impl TryFrom<u8> for BusinessRejectReason {
             3 => Ok(Self::UNSUPPORTED_MESSAGE_TYPE),
             4 => Ok(Self::APPLICATION_NOT_AVAILABLE),
             5 => Ok(Self::CONDITIONALLY_REQUIRED_FIELD_MISSING),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::BusinessRejectReason, c)),
         }
     }
 }
@@ -3949,12 +3951,12 @@ impl From<MsgDirection> for &'static [u8] {
 }
 
 impl TryFrom<char> for MsgDirection {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'R' => Ok(Self::RECEIVE),
             'S' => Ok(Self::SEND),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::MsgDirection, c)),
         }
     }
 }
@@ -3990,7 +3992,7 @@ impl From<DiscretionInst> for &'static [u8] {
 }
 
 impl TryFrom<char> for DiscretionInst {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '0' => Ok(Self::RELATED_TO_DISPLAYED_PRICE),
@@ -3999,7 +4001,7 @@ impl TryFrom<char> for DiscretionInst {
             '3' => Ok(Self::RELATED_TO_LOCAL_PRIMARY_PRICE),
             '4' => Ok(Self::RELATED_TO_MIDPOINT_PRICE),
             '5' => Ok(Self::RELATED_TO_LAST_TRADE_PRICE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::DiscretionInst, c)),
         }
     }
 }
@@ -4014,14 +4016,14 @@ pub enum LiquidityIndType {
 }
 
 impl TryFrom<u8> for LiquidityIndType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::FIVE_DAY_MOVING_AVERAGE),
             2 => Ok(Self::TWENTY_DAY_MOVING_AVERAGE),
             3 => Ok(Self::NORMAL_MARKET_SIZE),
             4 => Ok(Self::OTHER),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::LiquidityIndType, c)),
         }
     }
 }
@@ -4049,12 +4051,12 @@ impl From<ExchangeForPhysical> for &'static [u8] {
 }
 
 impl TryFrom<char> for ExchangeForPhysical {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'N' => Ok(Self::NO),
             'Y' => Ok(Self::YES),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ExchangeForPhysical, c)),
         }
     }
 }
@@ -4069,11 +4071,11 @@ pub enum ProgRptReqs {
 }
 
 impl TryFrom<u8> for ProgRptReqs {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
     1 => Ok(Self::BUYSIDE_EXPLICITLY_REQUESTS_STATUS_USING_STATUSREQUEST),2 => Ok(Self::SELLSIDE_PERIODICALLY_SENDS_STATUS_USING_LISTSTATUS_PERIOD_OPTIONALLY_SPECIFIED_IN_PROGRESSPERIOD),3 => Ok(Self::REAL_TIME_EXECUTION_REPORTS),
-    _=> anyhow::bail!("illegal value for field")
+    _=> Err(DecodeError::UnknownInt(Tags::ProgRptReqs, c)),
         }
     }
 }
@@ -4086,12 +4088,12 @@ pub enum IncTaxInd {
 }
 
 impl TryFrom<u8> for IncTaxInd {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::NET),
             2 => Ok(Self::GROSS),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::IncTaxInd, c)),
         }
     }
 }
@@ -4123,14 +4125,14 @@ impl From<TradeType> for &'static [u8] {
 }
 
 impl TryFrom<char> for TradeType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             'A' => Ok(Self::AGENCY),
             'G' => Ok(Self::VWAP_GUARANTEE),
             'J' => Ok(Self::GUARANTEED_CLOSE),
             'R' => Ok(Self::RISK_TRADE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::TradeType, c)),
         }
     }
 }
@@ -4180,7 +4182,7 @@ impl From<BasisPxType> for &'static [u8] {
 }
 
 impl TryFrom<char> for BasisPxType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '2' => Ok(Self::CLOSING_PRICE_AT_MORNING_SESSION),
@@ -4196,7 +4198,7 @@ impl TryFrom<char> for BasisPxType {
             'C' => Ok(Self::STRIKE),
             'D' => Ok(Self::OPEN),
             'Z' => Ok(Self::OTHERS),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::BasisPxType, c)),
         }
     }
 }
@@ -4210,13 +4212,13 @@ pub enum PriceType {
 }
 
 impl TryFrom<u8> for PriceType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::PERCENTAGE),
             2 => Ok(Self::PER_SHARE),
             3 => Ok(Self::FIXED_AMOUNT),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::PriceType, c)),
         }
     }
 }
@@ -4230,13 +4232,13 @@ pub enum GTBookingInst {
 }
 
 impl TryFrom<u8> for GTBookingInst {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             0 => Ok(Self::BOOK_OUT_ALL_TRADES_ON_DAY_OF_EXECUTION),
             1 => Ok(Self::ACCUMULATE_EXECUTIONS_UNTIL_ORDER_IS_FILLED_OR_EXPIRES),
             2 => Ok(Self::ACCUMULATE_UNTIL_VERBALLY_NOTIFIED_OTHERWISE),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::GTBookingInst, c)),
         }
     }
 }
@@ -4249,12 +4251,12 @@ pub enum NetGrossInd {
 }
 
 impl TryFrom<u8> for NetGrossInd {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: u8) -> Result<Self, Self::Error> {
         match c {
             1 => Ok(Self::NET),
             2 => Ok(Self::GROSS),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownInt(Tags::NetGrossInd, c)),
         }
     }
 }
@@ -4282,12 +4284,12 @@ impl From<ListExecInstType> for &'static [u8] {
 }
 
 impl TryFrom<char> for ListExecInstType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::IMMEDIATE),
             '2' => Ok(Self::WAIT_FOR_EXECUTE_INSTRUCTION),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::ListExecInstType, c)),
         }
     }
 }
@@ -4315,12 +4317,12 @@ impl From<CxlRejResponseTo> for &'static [u8] {
 }
 
 impl TryFrom<char> for CxlRejResponseTo {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::ORDER_CANCEL_REQUEST),
             '2' => Ok(Self::ORDER_CANCEL_REPLACE_REQUEST),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::CxlRejResponseTo, c)),
         }
     }
 }
@@ -4350,13 +4352,13 @@ impl From<MultiLegReportingType> for &'static [u8] {
 }
 
 impl TryFrom<char> for MultiLegReportingType {
-    type Error = anyhow::Error;
+    type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
         match c {
             '1' => Ok(Self::SINGLE_SECURITY),
             '2' => Ok(Self::INDIVIDUAL_LEG_OF_A_MULTI_LEG_SECURITY),
             '3' => Ok(Self::MULTI_LEG_SECURITY),
-            _ => anyhow::bail!("illegal value for field"),
+            _ => Err(DecodeError::UnknownChar(Tags::MultiLegReportingType, c)),
         }
     }
 }
