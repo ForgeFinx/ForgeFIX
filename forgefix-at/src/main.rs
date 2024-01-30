@@ -3,7 +3,7 @@ use forgefix::{
     fix,
     fix::generated::{MsgType, Tags},
     SessionSettings, FixApplicationAcceptor, FixApplicationHandle, FixApplicationInitiator,
-    fix::decode::parse_field,
+    fix::decode::{ParseError, parse_field},
 };
 use std::error::Error;
 use std::net::SocketAddr;
@@ -87,26 +87,25 @@ struct ApplicationParserCallback<'a> {
 }
 
 impl<'a> fix::decode::ParserCallback<'a> for ApplicationParserCallback<'a> {
-    fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, fix::SessionError> {
+    type Err = String; 
+    fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
         if let Ok(fix::generated::Tags::MsgSeqNum) = key.try_into() {
             self.msg_seq_num =
-                parse_field::<u32>(value).or(Err(fix::SessionError::MissingMsgSeqNum {
-                    text: String::from("Missing MsgSeqNum"),
-                }))?;
+                parse_field::<u32>(value).or(Err(String::from("Missing MsgSeqNum")))?;
         }
         Ok(true)
     }
-    fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, fix::SessionError> {
+    fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
         if let Ok(fix::generated::Tags::ClOrdID) = key.try_into() {
             self.cl_order_id = Some(value);
         }
         Ok(true)
     }
-    fn trailer(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, fix::SessionError> {
+    fn trailer(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, Self::Err> {
         Ok(false)
     }
-    fn sequence_num(&self) -> u32 {
-        self.msg_seq_num
+    fn parse_error(&mut self, err: ParseError) -> Result<(), Self::Err> {
+        Err(format!("parser error: {:?}", err))
     }
 }
 

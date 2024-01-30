@@ -7,7 +7,7 @@ use chrono::offset::Utc;
 use std::str;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 
-pub struct Transformer {
+pub(super) struct Transformer {
     msg: Vec<u8>,
     len_start: usize,
     len_end: usize,
@@ -25,7 +25,7 @@ impl Transformer {
         &self.msg[self.sending_time_start..self.sending_time_end]
     }
 
-    pub async fn build_async<'a, W>(self, sink: W) -> Result<(), SessionError>
+    pub(super) async fn build_async<'a, W>(self, sink: W) -> Result<(), SessionError>
     where
         W: AsyncWrite + Unpin,
     {

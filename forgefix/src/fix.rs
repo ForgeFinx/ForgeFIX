@@ -12,7 +12,7 @@ use tokio::sync::{mpsc, oneshot};
 use anyhow::{bail, Result};
 use thiserror::Error;
 
-use crate::fix::decode::{parse_field, parse_sending_time};
+use crate::fix::decode::{parse_field, parse_sending_time, ParseError};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
 use crate::fix::generated::{
     is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags,
@@ -48,11 +48,9 @@ mod stream;
 mod validate;
 
 #[derive(Debug, Error)]
-pub enum SessionError {
+enum SessionError {
     #[error("An I/O error occured")]
     IoError(#[from] io::Error),
-    #[error("BeginString was incorrect")]
-    IncorrectBeginString,
     #[error("A garbled message was received")]
     GarbledMessage {
         text: String,
@@ -75,7 +73,7 @@ pub enum SessionError {
 }
 
 #[derive(Debug)]
-pub enum GarbledMessageType {
+enum GarbledMessageType {
     BeginStringIssue,
     BodyLengthIssue,
     MsgTypeIssue,
@@ -127,7 +125,8 @@ struct SessionParserCallback<'a> {
 }
 
 impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
-    fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, SessionError> {
+    type Err = SessionError; 
+    fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
         match key.try_into() {
             Ok(Tags::MsgType) => {
                 if value.len() == 1 {
@@ -188,7 +187,7 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
         Ok(true)
     }
 
-    fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, SessionError> {
+    fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
         if !is_session_message(self.msg_type) {
             return Ok(false);
         }
@@ -256,12 +255,27 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
         Ok(true)
     }
 
-    fn trailer(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, SessionError> {
+    fn trailer(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, Self::Err> {
         Ok(false)
     }
 
-    fn sequence_num(&self) -> u32 {
-        self.msg_seq_num
+    fn parse_error(&mut self, err: decode::ParseError) -> Result<(), Self::Err> {
+        match err {
+            ParseError::BadLengthField(tag) => {
+                Err(SessionError::new_message_rejected(
+                    Some(SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE),
+                    self.msg_seq_num,
+                    Some(tag),
+                    None,
+                ))
+            }
+            ParseError::InvalidCharacter => {
+                Err(SessionError::GarbledMessage {
+                   text: "invalid character in message".to_string(),
+                   garbled_msg_type: GarbledMessageType::Other,
+               })
+            }
+        }
     }
 }
 

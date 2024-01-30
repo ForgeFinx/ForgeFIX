@@ -8,9 +8,9 @@
 //!
 //! [`MsgBuf`]: crate::fix::mem::MsgBuf
 
-use crate::fix::generated::{get_data_ref, SessionRejectReason};
+use crate::fix::generated::{get_data_ref};
 use crate::fix::{GarbledMessageType, SessionError};
-use anyhow::{format_err, Result};
+use anyhow::Result;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use lazy_static::lazy_static;
 use std::collections::{BTreeSet, HashMap};
@@ -37,194 +37,180 @@ enum FieldState {
     InField,
     Error,
 }
-struct FieldIter<'a, 'i, 'x> {
-    inner: std::iter::Enumerate<std::iter::Cloned<std::slice::Iter<'a, u8>>>,
+struct FieldIter<'a> {
+    inner: std::iter::Enumerate<std::slice::Iter<'a, u8>>,
+    msg: &'a [u8],
     state: FieldState,
-    tag_accum: u32,
     field_start: usize,
-    include_fields: Option<&'i BTreeSet<u32>>,
-    exclude_fields: Option<&'x BTreeSet<u32>>,
+    tag_accum: u32, 
+    field_lengths: HashMap<u32, u32>,
 }
-impl<'a, 'i, 'x> Iterator for FieldIter<'a, 'i, 'x> {
-    type Item = Result<(u32, (usize, usize))>;
+
+impl<'a> FieldIter<'a> {
+    fn new(msg: &'a [u8]) -> Self {
+        FieldIter {
+            inner: msg.iter().enumerate(), 
+            msg,
+            state: FieldState::Start,
+            field_start: 0,
+            tag_accum: 0,
+            field_lengths: HashMap::new(), 
+        }
+    }
+
+    fn skip_ahead(&mut self, n: u32) {
+        for _ in 0..n {
+            _ = self.inner.next();
+        }
+    }
+}
+
+impl<'a> Iterator for FieldIter<'a> {
+    type Item = Result<(u32, &'a [u8]), ParseError>; 
 
     fn next(&mut self) -> Option<Self::Item> {
-        for (i, b) in &mut self.inner {
-            let c = b as char;
+        while let Some((i, b)) = self.inner.next() {
+            let c = *b as char; 
             match (&self.state, c) {
                 (&FieldState::Start, '0'..='9') | (&FieldState::InTag, '0'..='9') => {
                     if self.state == FieldState::Start {
                         self.tag_accum = 0;
                     } else {
-                        self.tag_accum *= 10;
+                        self.tag_accum *= 10; 
                     }
-                    self.tag_accum += b as u32 - '0' as u32;
+                    self.tag_accum += *b as u32 - '0' as u32; 
                     self.state = FieldState::InTag;
                 }
                 (&FieldState::InTag, '=') => {
                     self.field_start = i + 1;
-                    self.state = FieldState::SeenEquals;
+                    if let Some(len) = self.field_lengths.get(&self.tag_accum) {
+                        self.skip_ahead(len - 1);
+                    }
+                    self.state = FieldState::SeenEquals; 
                 }
                 (&FieldState::SeenEquals, '\x01') | (&FieldState::InField, '\x01') => {
-                    let should_stop = self
-                        .include_fields
-                        .as_ref()
-                        .map(|fields| !fields.contains(&self.tag_accum))
-                        .unwrap_or(false);
-                    let reached_end = self
-                        .exclude_fields
-                        .as_ref()
-                        .map(|fields| fields.contains(&self.tag_accum))
-                        .unwrap_or(false);
-                    if should_stop || reached_end {
-                        break;
+                    if let Some(tag) = get_data_ref(self.tag_accum) {
+                        if let Some(val) = bytes_to_u32(&self.msg[self.field_start..i]) {
+                            self.field_lengths.insert(tag, val);
+                        } else {
+                            self.state = FieldState::Error; 
+                            return Some(Err(ParseError::BadLengthField(self.tag_accum)));
+                        }
                     }
-                    self.state = FieldState::Start;
-                    return Some(Ok((
-                        self.tag_accum,
-                        (self.field_start, i - self.field_start),
-                    )));
+                    self.state = FieldState::Start; 
+                    return Some(Ok((self.tag_accum, &self.msg[self.field_start..i]))); 
                 }
-                (&FieldState::SeenEquals, _) | (&FieldState::InField, _) => {
-                    if self.state != FieldState::InField {
-                        self.state = FieldState::InField;
-                    }
-                }
+                (&FieldState::SeenEquals, _) => self.state = FieldState::InField, 
+                (&FieldState::InField, _) => {}
                 (&FieldState::Error, _) => return None,
                 _ => {
-                    self.state = FieldState::Error;
-                    return Some(Err(format_err!(
-                        "{}: invalid char at {} while in {:?}",
-                        c,
-                        i,
-                        self.state
-                    )));
+                    self.state = FieldState::Error; 
+                    return Some(Err(ParseError::InvalidCharacter));
                 }
             }
         }
-
         None
     }
 }
 
-impl<'a, 'i, 'x> FieldIter<'a, 'i, 'x> {
-    #[allow(dead_code)]
-    fn new_header(msg: &'a [u8]) -> Self {
-        FieldIter {
-            inner: msg.iter().cloned().enumerate(),
-            state: FieldState::Start,
-            tag_accum: 0,
-            field_start: 0,
-            include_fields: Some(&*HEADER_FIELDS),
-            exclude_fields: None,
-        }
-    }
-
-    #[allow(dead_code)]
-    fn new_body(msg: &'a [u8]) -> Self {
-        FieldIter {
-            inner: msg.iter().cloned().enumerate(),
-            state: FieldState::Start,
-            tag_accum: 0,
-            field_start: 0,
-            include_fields: None,
-            exclude_fields: Some(&*TRAILER_FIELDS),
-        }
-    }
+/// Errors that can occur while extracting fields from a FIX message.
+#[derive(Debug)]
+pub enum ParseError {
+    /// An unexpected character was seen in a FIX message
+    InvalidCharacter, 
+    /// A length field's value could not be parsed. The length field's tag number is stored in the
+    /// [`u32`]
+    BadLengthField(u32), 
 }
 
 /// A trait that allows custom parsing of a [`MsgBuf`] 
 ///
 /// [`MsgBuf`]: crate::fix::mem::MsgBuf
 pub trait ParserCallback<'a> {
-    fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, SessionError>;
-    fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, SessionError>;
-    fn trailer(&mut self, key: u32, value: &'a [u8]) -> Result<bool, SessionError>;
-    fn sequence_num(&self) -> u32;
+    type Err; 
+
+    /// Called for any fields in message that are header fields.
+    fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err>;
+    
+    /// Called for any fields in message that are body fields 
+    fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err>;
+
+    /// Called for any fields in message that are trailer fields 
+    fn trailer(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err>;
+
+    /// Called if a [`ParseError`] occurs
+    ///
+    /// If a [`ParseError`] occurs, the [`parse`] function will call `parse_error`, and return its
+    /// result. This is the oppurtunity to control the return value of [`parse`] in the case of a
+    /// message tripping a [`ParseError`]
+    fn parse_error(&mut self, err: ParseError) -> Result<(), Self::Err>; 
 }
 
 /// A default implementation of [`ParserCallback`]
 pub struct NullParserCallback;
 
 impl<'a> ParserCallback<'a> for NullParserCallback {
-    fn header(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, SessionError> {
+    type Err = (); 
+    fn header(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, Self::Err> {
         Ok(true)
     }
-    fn body(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, SessionError> {
+    fn body(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, Self::Err> {
         Ok(true)
     }
-    fn trailer(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, SessionError> {
+    fn trailer(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, Self::Err> {
         Ok(true)
     }
-    fn sequence_num(&self) -> u32 {
-        0
+    fn parse_error(&mut self, _err: ParseError) -> Result<(), Self::Err> {
+        Err(())
     }
 }
 
 /// Parse a [`MsgBuf`] and store fields in a [`ParserCallback`]
 ///
 /// [`MsgBuf`]: crate::fix::mem::MsgBuf
-pub fn parse<'a>(
+///
+/// # Notes
+///
+/// A FIX message is made up of many FIX fields. A FIX field is a tag/value pair connected with an
+/// `=`. Fields are delimited by an `SOH`. This can be represented by `\x01` or `|`. 
+///
+/// There are a few special fields which are allowed to contain an `SOH` in the value. Thus, they require a corresponding length 
+/// field to specify they bytes for that value. For example, `SignatureLength(93)` says how long the
+/// `Signature(89)` value will be. Which makes the following valid in a FIX message:
+/// `"93=5|89=12\x0145"`. 
+///
+/// The `parse` function works by iterating over each field, and passing each tag/value pair to the
+/// `callback`'s methods. 
+///
+/// [`parse`] will return early with `Ok(())` if at any point the callback returns `Ok(false)`. 
+///
+/// # Errors
+///
+/// If at any point the `callback` return an `Err`, [`parse`] will end and return the err. 
+///
+/// If at any point the next field cannot be extracted  due to the message being malformed,
+/// `parse` will call [`ParserCallback::parse_error`] and return its result. 
+pub fn parse<'a, T: ParserCallback<'a>>(
     msg: &'a [u8],
-    callbacks: &mut impl ParserCallback<'a>,
-) -> Result<(), SessionError> {
-    let mut field_lengths: HashMap<u32, u32> = HashMap::new();
-    let mut state = FieldState::Start;
-    let mut tag_accum: u32 = 0;
-    let mut field_start: usize = 0;
-    let mut iter = msg.iter().enumerate();
-    while let Some((i, b)) = iter.next() {
-        let c = *b as char;
-        match (&state, c) {
-            (&FieldState::Start, '0'..='9') | (&FieldState::InTag, '0'..='9') => {
-                if state == FieldState::Start {
-                    tag_accum = 0;
-                } else {
-                    tag_accum *= 10;
-                }
-                tag_accum += *b as u32 - '0' as u32;
-                state = FieldState::InTag;
-            }
-            (&FieldState::InTag, '=') => {
-                field_start = i + 1;
-                if let Some(len) = field_lengths.get(&tag_accum) {
-                    skip_ahead(&mut iter, len - 1);
-                }
-                state = FieldState::SeenEquals;
-            }
-            (&FieldState::SeenEquals, '\x01') | (&FieldState::InField, '\x01') => {
-                if let Some(tag) = get_data_ref(tag_accum) {
-                    field_lengths.insert(
-                        tag,
-                        bytes_to_u32(&msg[field_start..i]).ok_or(
-                            SessionError::new_message_rejected(
-                                Some(SessionRejectReason::INCORRECT_DATA_FORMAT_FOR_VALUE),
-                                callbacks.sequence_num(),
-                                Some(tag_accum),
-                                None,
-                            ),
-                        )?,
-                    );
-                }
-                let cont =
-                    if HEADER_FIELDS.contains(&tag_accum) || TRAILER_FIELDS.contains(&tag_accum) {
-                        callbacks.header(tag_accum, &msg[field_start..i])?
-                    } else {
-                        callbacks.body(tag_accum, &msg[field_start..i])?
-                    };
-                if !cont {
-                    break;
-                }
-
-                state = FieldState::Start;
-            }
-            (&FieldState::SeenEquals, _) | (&FieldState::InField, _) => {}
-            _ => {
-                return Err(SessionError::GarbledMessage {
-                    text: format!("{}: invalid char at {} while in {:?}", c, i, state),
-                    garbled_msg_type: GarbledMessageType::Other,
-                });
-            }
+    callbacks: &mut T,
+) -> Result<(), T::Err> 
+{
+    let field_iter = FieldIter::new(msg); 
+    for res in field_iter {
+        let (tag, val) = match res {
+            Ok((t, v)) => (t, v),
+            Err(e) => return callbacks.parse_error(e),
+        };
+        let cont =
+            if HEADER_FIELDS.contains(&tag) {
+                callbacks.header(tag, val)?
+            } else if TRAILER_FIELDS.contains(&tag) {
+                callbacks.trailer(tag, val)?
+            } else {
+                callbacks.body(tag, val)?
+            };
+        if !cont {
+            break;
         }
     }
     Ok(())
@@ -247,11 +233,6 @@ fn bytes_to_u32(bytes: &[u8]) -> Option<u32> {
         }
     }
     Some(accum)
-}
-fn skip_ahead<T: Iterator>(iter: &mut T, n: u32) {
-    for _ in 0..n {
-        _ = iter.next();
-    }
 }
 
 pub(super) struct ParsedPeek {
@@ -379,5 +360,33 @@ mod test {
             true
         );
         assert_eq!(bytes_to_u32(b"a").is_none(), true);
+    }
+
+    #[test]
+    fn test_field_iter() {
+        let messages: Vec<&[u8]> = vec![
+            b"8=FIX.4.2\x019=44\x018=A\x0110=123\x01",
+            b"8\x01=FIX.4.2",
+            b"93=6\x018=A\x0189=12\x01456\x0110=123\x01",
+            b"93=6A\x018=A\x0189=12\x01456\x0110=123\x01",
+        ];
+
+        let expected: Vec<Vec<Result<(u32, &[u8]), ()>>> = vec![
+            vec![Ok((8, b"FIX.4.2")), Ok((9, b"44")), Ok((8, b"A")), Ok((10, b"123"))],
+            vec![Err(())],
+            vec![Ok((93, b"6")), Ok((8, b"A")), Ok((89, b"12\x01456")), Ok((10, b"123"))],
+            vec![Err(())],
+        ];
+
+        for (msg, ex) in messages.iter().zip(expected.iter()) {
+            let field_iter = FieldIter::new(&msg[..]); 
+            for (got, exp) in field_iter.zip(ex.iter()) {
+                if exp.is_err() {
+                    assert!(got.is_err(), "Expected error");
+                } else {
+                    assert_eq!(got.unwrap(), *exp.as_ref().unwrap()); 
+                }
+            }
+        }
     }
 }

@@ -23,11 +23,11 @@ pub enum Tags {
    <xsl:for-each select="field"><xsl:value-of select="@name"/> = <xsl:value-of select="@number"/>,</xsl:for-each>
 }
 impl TryFrom&lt;u32&gt; for Tags {
-    type Error = &amp;'static str;
+    type Error = anyhow::Error;
     fn try_from(u : u32) -> Result&lt;Self, Self::Error&gt; {
     match u {
     <xsl:for-each select="field"><xsl:value-of select="@number"/> => Ok(Tags::<xsl:value-of select="@name"/>),</xsl:for-each>
-    _=> Err("illegal value for Tag")
+    _=> anyhow::bail!("illegal value for Tag")
         }
     }
 }
@@ -80,11 +80,11 @@ impl From&lt;<xsl:value-of select="./@name" />&gt; for &amp;'static [u8] {
 }
 
 impl TryFrom&lt;char&gt; for <xsl:value-of select="./@name" /> {
-    type Error = &amp;'static str;
+    type Error = anyhow::Error;
     fn try_from(c : char) -> Result&lt;Self, Self::Error&gt; {
     match c {
     <xsl:for-each select="value">'<xsl:value-of select="./@enum"/>' => Ok(Self::<xsl:value-of select="./@description"/>),</xsl:for-each>
-    _=> Err("illegal value for field")
+    _=> anyhow::bail!("illegal value for field")
         }
     }
 }
@@ -101,11 +101,11 @@ pub enum <xsl:value-of select="./@name" /> {
 }
 <xsl:if test="*">
 impl TryFrom&lt;u8&gt; for <xsl:value-of select="./@name" /> {
-    type Error = &amp;'static str;
+    type Error = anyhow::Error;
     fn try_from(c : u8) -> Result&lt;Self, Self::Error&gt; {
     match c {
     <xsl:for-each select="value"><xsl:value-of select="./@enum"/> => Ok(Self::<xsl:value-of select="./@description"/>),</xsl:for-each>
-    _=> Err("illegal value for field")
+    _=> anyhow::bail!("illegal value for field")
         }
     }
 }
