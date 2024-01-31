@@ -1,26 +1,85 @@
 //! Message decoding and parsing
 //!
-//! Application messages that come off the wire are stored in a [`MsgBuf`]. Message buffers are just wrappers
-//! around a [`Vec<u8>`], and have yet to be parsed and verified. In order to extract the tag/value
-//! pairs from a message, it must be parsed using the [`parse`] function which accepts a [`MsgBuf`]
-//! and a [`ParserCallback`]. The callback defines which tags to parse, implements how to parse the value 
-//! and can save values, and handle error cases. 
+//! This module provides tools for decoding information from an array of bytes representing a FIX
+//! message. One of the design choices of ForgeFIX was for message parsing to occur on-demend
+//! instead of automatically. This way, only when necessary are messages decoded, and only what is
+//! necessary will be parsed from the message. 
+//!
+//! # Terminalogy
+//! * `message` - An entire FIX message, which is represented as an array of bytes in a [`MsgBuf`].
+//! There are two types of messages: Session and Application. Session message control the FIX
+//! session and are managed entirely by the FIX engine. Application messages are what peers create
+//! and send to each other, and are almost entirely managed by the user. The FIX engine only
+//! gurantees that the user receives the application messages in the correct order.
+//!
+//! * `fields` -- A tag/value pair. The tag and value are connected with an `=`. Multiple fields
+//! are delimited with an `SOH`. A message is just list of fields.
+//!
+//! * `tags` --  A tag is on the left side of the `=` and describes what kind of information the value
+//! represents. All valid FIX tags can be found in the [FIX dictionary], and are represented in the
+//! [`Tags`] enum. 
+//!
+//! * `values` -- A value is on the right side of the `=` and contains the actual information for the
+//! field. FIX values are Utf8 encoded and have one of the following types: int, float, String,
+//! char or data (see [FIX dictionary] for more info). Furthermore, for some fields, only a subset
+//! of values for the type are considered valid. These are called value sets for that field. All
+//! value sets are represented by enums in the [generated] module. 
+//!
+//! * `SOH` -- The character that delimits the fields in a message. An SOH is represented with ascii
+//! code 1. For displaying, a `|` is often used to show an SOH. In rust, an SOH is represented as a
+//! byte: `b'\x01'`. 
+//!
+//! # Decoding
+//!
+//! Parsing of messages is done with the [`parse`] function which depends on a user defined
+//! [`ParserCallback`]. The parse function splits a message into fields, and then tag/value pairs.
+//! These pairs are sent to the callback, where the user defines which to parse. 
+//!
+//! The [`Tags`] enum and [`parse_field`] function are tools to support parsing of tags and values. 
+//!
+//! # Errors
+//!
+//! If a message is malformed or contains invalid data, then decoding the message will likely cause an error. 
+//! The FIX specification recommends being fault tolerant when processing application level
+//! messages. ForgeFIX follows this recommendation which is reflected in the decode error types. 
+//!
+//! [`MessageParseError`]: errors that occur when a message fails to meet the FIX spec for message
+//! structure, and the [`parse`] function is not able to split the message into its fields. This
+//! error will always be tripped if any part of the message is malformed. 
+//!
+//! [`DecodeError`]: errors for invalid tags and values. A tag can be invalid if it is not a known tag number. 
+//! A value can be invalid because it: is invalid UTF-8, cannot be parsed into a rust type, or does not exist in 
+//! a value set. This error will only occur when a user attempts to parse an invalid tag or value. 
 //!
 //! [`MsgBuf`]: crate::fix::mem::MsgBuf
+//! [FIX dictionary]: https://btobits.com/fixopaedia/fixdic42/index.html
+//! [`Tags`]: crate::fix::generated::Tags
+//! [generated]: crate::fix::generated
 //!
 //! # Example
 //!
-//! ```rust
-//! use anyhow::{Error, bail}; 
-//!
-//! use forgefix::fix::decode::{ParserCallback, parse_field, parse, ParseError}; 
+//! ```no_run
+//! use anyhow::{Error, bail, Result}; 
+//! use forgefix::fix::decode::{ParserCallback, parse_field, parse, MessageParseError}; 
 //! use forgefix::fix::generated::{Tags, MsgType, ExecType, OrdStatus};
 //!
+//! #[derive(Debug)]
 //! struct ExecutionReportParser<'a> {
 //!     order_id: &'a str,
 //!     order_status: OrdStatus,
 //!     exec_type: ExecType,
 //!     qty_filled: f32,
+//! }
+//!
+//! impl<'a> Default for ExecutionReportParser<'a> {
+//!     fn default() -> Self {
+//!         ExecutionReportParser {
+//!             order_id: Default::default(),
+//!             order_status: OrdStatus::NEW,
+//!             exec_type: ExecType::NEW,
+//!             qty_filled: Default::default(),
+//!         }
+//!     }
 //! }
 //!
 //! impl<'a> ParserCallback<'a> for ExecutionReportParser<'a> {
@@ -59,9 +118,40 @@
 //!     }
 //!
 //!     // if the message is malformed, catch the error and handle it...
-//!     fn parse_error(&mut self, _err: ParseError) -> Result<(), Self::Err> {
-//!         bail!("message is malformed");
+//!     fn parse_error(&mut self, err: MessageParseError) -> Result<(), Self::Err> {
+//!         Err(err.into())
 //!     }
+//! }
+//!
+//! # use forgefix::{SessionSettings, FixApplicationInitiator}; 
+//! #[tokio::main]
+//! async fn main() -> Result<()> {
+//! 
+//!     // create SessionSettings...
+//!
+//! #    let settings = SessionSettings::builder()
+//! #        .with_sender_comp_id("my_id")
+//! #        .with_target_comp_id("peer_id")
+//! #        .with_store_path("./store".into())
+//! #        .with_log_dir("./log".into())
+//! #        .with_socket_addr("127.0.0.1:0".parse().unwrap())
+//! #        .build()?; 
+//!     let (handle, mut receiver) = FixApplicationInitiator::build(settings)?
+//!         .initiate()
+//!         .await?;
+//!
+//!     tokio::spawn(async move {
+//!         while let Some(msg) = receiver.recv().await {
+//!             let mut callback: ExecutionReportParser = Default::default(); 
+//!             match parse(&msg[..], &mut callback) {
+//!                 Ok(()) => println!("Received execution report: {:?}", callback),
+//!                 Err(e) => println!("Error parsing execution report: {:?}", e),
+//!             }
+//!         }
+//!     }); 
+//!
+//!     // run application ...
+//!     # Ok(())
 //! }
 //! ```
 
@@ -87,20 +177,34 @@ lazy_static! {
     static ref TRAILER_FIELDS: BTreeSet<u32> = [93, 89, 10].iter().cloned().collect();
 }
 
+/// Errors that can occur while splitting a message into fields.
 #[derive(Error, Debug)]
 pub enum MessageParseError {
+    /// The message contained an unexpected byte. 
+    ///
+    /// The [`usize`] is the index of the unexpected byte, and the [`Vec<u8>`] will contain the
+    /// entire message. 
     #[error("the value at index {0:?} was unexpected in message {1:?}")]
     UnexpectedByte(usize, Vec<u8>), 
+    /// A length field's value could not be parsed. 
+    ///
+    /// The [`u32`] will be the length tag, and the [`Vec<u8>`] will contain its value that could
+    /// not be parsed. 
     #[error("could not parse value {1:?} of length field {0:?}")]
     BadLengthField(u32, Vec<u8>), 
 }
 
-/// Errors that can occur while extracting fields from a FIX message. 
+/// Errors that can occur while decoding a FIX message. 
 #[derive(Error, Debug)]
 pub enum DecodeError {
     /// The Message could not be parsed into fields 
     #[error("Message could not be parsed into fields: {0:?}")]
     BadMessage(#[from] MessageParseError),
+    /// A field contained an unknown tag
+    ///
+    /// The [`u32`] contains the tag value
+    #[error("{0:?} does not match a known Tag")]
+    UnknownTag(u32), 
     /// A field contained invalid utf8
     #[error("FIX message contained invalid utf8: {0:?}")]
     Utf8Error(#[from] std::str::Utf8Error),
@@ -109,11 +213,6 @@ pub enum DecodeError {
     /// The [`Vec<u8>`] contains the value
     #[error("Value {0:?} could not be parsed")]
     BadValue(Vec<u8>),
-    /// A field contained an unknown tag
-    ///
-    /// The [`u32`] contains the tag value
-    #[error("{0:?} does not match a known Tag")]
-    UnknownTag(u32), 
     /// A character field did not match any known variant of a tag
     ///
     /// The attempted [`Tags`] and [`char`] are contained in the error
@@ -217,17 +316,30 @@ impl<'a> Iterator for FieldIter<'a> {
     }
 }
 
-/// A trait that allows custom parsing of a [`MsgBuf`]
+/// A trait that defines parsing of tag/values in a [`MsgBuf`], and is required to call the [`parse`]
+/// function.
 ///
-/// The `ParserCallback` contains methods that get called for certain parsing events. For example,
-/// if a header field is found, the [`header`] function will be called. In the event of a
-/// [`ParseError`], the [`parse_error`] function is called. 
+/// The `ParserCallback` defines methods that get called for certain parsing events. 
 ///
-/// For the [`header`], [`body`] and [`trailer`] functions, the returned boolean is a signal to the parser
-/// to continue or to stop. If `Ok(true)` is returned, the parser will continue. If `Ok(false)` is
-/// returned, the parser will stop, and return `Ok(())`. If any of these functions return an `Err`,
-/// the parser will stop and return the `Err`.
+/// ## Events
 ///
+/// * Header field found -- the [`header`] function is called 
+/// * Body field found -- the [`body`] function is called 
+/// * Trailer field found -- the [`trailer`] function is called 
+/// * A [`MessageParseError`] occurs -- the [`parse_error`] function is called 
+///
+/// To see which fields are headers or trailers, see [FIX dictionary]. All other fields are
+/// considered body fields. 
+///
+/// ## Return Values 
+///
+/// * [`header`], [`body`] and [`trailer`] -- Return `Ok(true)` to signal that parsing should
+/// continue. Return `Ok(false)` to signal that parsing should end. Return `Err` if an error
+/// occured that should cause parsing to stop. 
+///
+/// * [`parse_error`] -- Convert the [`MessageParseError`] into a `Result<(), Self::Err>`
+///
+/// [FIX dictionary]: https://btobits.com/fixopaedia/fixdic42/index.html
 /// [`MsgBuf`]: crate::fix::mem::MsgBuf
 /// [`header`]: ParserCallback::header
 /// [`body`]: ParserCallback::body
@@ -245,11 +357,7 @@ pub trait ParserCallback<'a> {
     /// Called for any fields in message that are trailer fields 
     fn trailer(&mut self, key: u32, value: &'a [u8]) -> result::Result<bool, Self::Err>;
 
-    /// Called if a [`ParseError`] occurs
-    ///
-    /// If a [`ParseError`] occurs, the [`parse`] function will call `parse_error`, and return its
-    /// result. This is the oppurtunity to control the return value of [`parse`] in the case of a
-    /// message tripping a [`ParseError`]
+    /// Called if a [`MessageParseError`] occurs
     fn parse_error(&mut self, err: MessageParseError) -> result::Result<(), Self::Err>; 
 }
 
@@ -272,30 +380,26 @@ impl<'a> ParserCallback<'a> for NullParserCallback {
     }
 }
 
-/// Parse a [`MsgBuf`] and store fields in a [`ParserCallback`]
+/// Parse a [`MsgBuf`] and store values in a [`ParserCallback`]
 ///
 /// [`MsgBuf`]: crate::fix::mem::MsgBuf
 ///
 /// # Notes
 ///
-/// A FIX message is made up of many FIX fields. A FIX field is a tag/value pair connected with an
-/// `=`. Fields are delimited by an `SOH`. This can be represented by `\x01` or `|`. 
+/// The `parse` function iterates over each field and splits each field into a tag/value pair. Then, 
+/// each tag/value pair is passed to the `callback`'s methods. 
 ///
-/// There are a few special fields which are allowed to contain an `SOH` in the value. Thus, they require a corresponding length 
-/// field to specify they bytes for that value. For example, `SignatureLength(93)` says how long the
-/// `Signature(89)` value will be. Which makes the following valid in a FIX message:
-/// `"93=5|89=12\x0145"`. 
+/// In the event that splitting a message into fields causes a [`MessageParseError`], the created
+/// error will be passed to the callback.
 ///
-/// The `parse` function works by iterating over each field, and passing each tag/value pair to the
-/// `callback`'s methods. 
-///
-/// [`parse`] will return early with `Ok(())` if at any point the callback returns `Ok(false)`. 
+/// [`parse`] will return early with `Ok(())` if at any point the callback returns `Ok(false)`.
+/// `Ok(())` will also be returned once all the fields have been iterated over. 
 ///
 /// # Errors
 ///
 /// If at any point the `callback` return an `Err`, [`parse`] will end and return the err. 
 ///
-/// If at any point the next field cannot be extracted  due to the message being malformed,
+/// If at any point a [`MessageParseError`] occurs,
 /// `parse` will call [`ParserCallback::parse_error`] and return its result. 
 pub fn parse<'a, T: ParserCallback<'a>>(
     msg: &'a [u8],
@@ -431,11 +535,30 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
 
 /// Attempts to parse a FIX value into any type that `impl`'s [`FromStr`]
 ///
-/// In order to parse a field into an enum like [`MsgType`], parse the field into an [`char`] and
-/// then try converting the [`char`] into a [`MsgType`].
+/// # Primitives
 ///
-/// In order to parse a field into a [`String`], use `parse_field`. However, to parse into a
-/// [`&str`], it is recommended to use [`from_utf8`]. 
+/// Rust primitives generally `impl` [`FromStr`]. And most FIX data type can be represented by rust primitives. Consider 
+/// using the following for each FIX type: 
+/// * `int` -- [`i32`], [`u32`]
+/// * `float` -- [`f32`]
+/// * `char` -- [`char`]
+/// * `String` -- [`&str`]*, [`String`]
+/// * `data` -- `&[u8]`
+///
+/// *[`&str`] does not itself `impl` [`FromStr`], so just use [`from_utf8`]. Since [`DecodeError`]
+/// `impl`'s [`From<std::str::Utf8Error>`], the result can easily be converted
+///
+/// # Tags 
+///
+/// FIX tags are automatically converted into a [`u32`]. The [`Tags`] enum `impl`'s
+/// [`TryFrom<u32>`]. 
+///
+/// # Value Sets 
+///
+/// All FIX value sets are implemented as enums in the `generated` module. To convert a value into
+/// its enum, first convert to the corresponding primitive ([`char`] or [`u8`]). And then
+/// all enums `impl` [`TryFrom`] for either [`char`] or [`u8`]. 
+///
 ///
 /// [`FromStr`]: std::str::FromStr
 /// [`MsgType`]: crate::fix::generated::MsgType
@@ -444,24 +567,34 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
 /// # Example
 ///
 /// ```rust
-/// # use forgefix::fix::generated::{OrdStatus, MsgType}; 
+/// # use forgefix::fix::generated::{EncryptMethod, OrdStatus, MsgType}; 
 /// # use forgefix::fix::decode::parse_field;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+///
+///     // MsgType is specified as a char and has a value set
 ///     let msg_type_field = b"A"; 
 ///     let msg_type: MsgType = parse_field::<char>(msg_type_field)?.try_into()?; 
 ///     assert_eq!(msg_type, MsgType::LOGON); 
 ///
+///     // Prices are floats, so parse into an f32
 ///     let price_field = b"1.13"; 
 ///     let price = parse_field::<f32>(price_field)?; 
 ///     assert_eq!(price, 1.13f32); 
 ///
+///     // OrdStatus is also specified as a char and has a value set 
 ///     let ord_status_field = b"0"; 
 ///     let ord_status: OrdStatus = parse_field::<char>(ord_status_field)?.try_into()?;
 ///     assert_eq!(ord_status, OrdStatus::NEW); 
 ///
+///     // To parse into a &str, just use std::str::from_utf8
 ///     let order_id_field = b"abc123"; 
 ///     let order_id: &str = std::str::from_utf8(order_id_field)?; 
 ///     assert_eq!(order_id, "abc123"); 
+///
+///     // EncryptMethod is specified as an int and has a value set
+///     let encrypt_method_field = b"0"; 
+///     let encrypt_method: EncryptMethod  = parse_field::<u8>(encrypt_method_field)?.try_into()?; 
+///     assert_eq!(encrypt_method, EncryptMethod::NONE);
 ///     # Ok(())
 /// # }
 /// ```

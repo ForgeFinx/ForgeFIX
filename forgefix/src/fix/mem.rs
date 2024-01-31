@@ -3,7 +3,7 @@
 use std::fmt::{Debug, Display, Write};
 
 /// A wrapper around a [`Vec<u8>`]. Messages that come off the wire are stored just as a collection
-/// of bytes. In order to parse field/value pairs, you should use the [`parse`] function. 
+/// of bytes. In order to parse fields, use the [`parse`] function. 
 ///
 /// [`parse`]: crate::fix::decode::parse
 #[derive(Default)]
