@@ -1,4 +1,4 @@
 [workspace]
-members = ["forgefix", "forgefix-at", "forgefix-c"]
+members = ["forgefix", "forgefix-at", "forgefix-c", "forgefix-c-at"]
 resolver = "2"
 

@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
-#include "forgefix-c/fix.h"
-#include "forgefix-c/fix_fields.h"
+#include "fix.h"
+#include "fix_fields.h"
 
 const char ID_SOURCE  = 'A';
 
@@ -17,11 +17,9 @@ c_fix_error send_order(
     const char* account); 
 
 
-int main(int argc, char *argv[]) {
+int c_main(const char *log, const char *store) {
 
     c_fix_error err; 
-    char *log = argv[1]; 
-    char *store = argv[2];
 
     session_settings_builder_t builder = session_settings_builder_new();
     ssb_set_sender_comp_id(builder, "TW");

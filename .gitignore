@@ -6,4 +6,5 @@ log
 fix_client
 Cargo.lock
 test/quickfix.diff
+test/output
 store

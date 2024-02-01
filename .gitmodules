@@ -1,3 +1,0 @@
-[submodule "test/quickfix"]
-	path = test/quickfix
-	url = https://github.com/quickfix/quickfix.git
