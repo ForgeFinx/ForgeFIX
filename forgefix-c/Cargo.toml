@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.31"
-forgefix = { path = "../forgefix", version = "0.2.0" }
+forgefix = { path = "../forgefix", version = "0.2.1" }
 tokio = { version = "1.29.1", features = ["net", "macros", "rt", "rt-multi-thread", "io-util", "time", "fs"] }
 
 [build-dependencies]
