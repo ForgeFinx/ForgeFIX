@@ -4,9 +4,9 @@ use crate::fix::{decode, validate, SessionError};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
-pub const PEEK_LEN: usize = 32;
+pub(super) const PEEK_LEN: usize = 32;
 
-pub async fn preparse_stream(
+pub(super) async fn preparse_stream(
     buf: &[u8],
     r: &mut TcpStream,
     logger: &mut Logger,
@@ -38,7 +38,7 @@ pub async fn preparse_stream(
 //  - else, remove another byte from the stream (add to sink so it can be logged)
 //  - if that was the last byte, return
 //  - else, repeat
-pub async fn flush_stream(r: &mut TcpStream, l: &mut Logger) -> Result<(), SessionError> {
+pub(super) async fn flush_stream(r: &mut TcpStream, l: &mut Logger) -> Result<(), SessionError> {
     let mut sink = Vec::new();
     let mut buf: [u8; 1] = [0; 1];
     let mut peek_buf: [u8; 3] = [0; 3];
@@ -68,7 +68,7 @@ pub async fn flush_stream(r: &mut TcpStream, l: &mut Logger) -> Result<(), Sessi
     Ok(())
 }
 
-pub async fn peek_stream(
+pub(super) async fn peek_stream(
     r: &mut TcpStream,
     buf: &mut [u8],
     _peek_len: usize,
@@ -86,13 +86,13 @@ pub async fn peek_stream(
     Ok(num_read)
 }
 
-pub async fn disconnect(mut stream: TcpStream) {
+pub(super) async fn disconnect(mut stream: TcpStream) {
     _ = stream.set_linger(Some(tokio::time::Duration::from_secs(0)));
     _ = stream.shutdown().await;
     std::mem::drop(stream);
 }
 
-pub async fn send_message(
+pub(super) async fn send_message(
     msg_buf: &MsgBuf,
     r: &mut TcpStream,
     l: &mut Logger,

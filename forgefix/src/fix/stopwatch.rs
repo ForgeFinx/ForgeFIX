@@ -1,14 +1,14 @@
 use crate::fix::session::Event;
 use tokio::time::{sleep_until, Duration, Instant, Sleep};
 
-pub struct Timeout {
+pub(super) struct Timeout {
     next_instant: Instant,
     duration: Duration,
     event: Event,
 }
 
 impl Timeout {
-    pub fn new(instant: Instant, duration: Duration, event: Event) -> Timeout {
+    pub(super) fn new(instant: Instant, duration: Duration, event: Event) -> Timeout {
         Timeout {
             next_instant: instant,
             duration,
@@ -16,21 +16,21 @@ impl Timeout {
         }
     }
 
-    pub fn reset_timeout(&mut self) {
+    pub(super) fn reset_timeout(&mut self) {
         self.next_instant = Instant::now() + self.duration;
     }
 
-    pub fn set_timeout_duration(&mut self, dur: Duration) {
+    pub(super) fn set_timeout_duration(&mut self, dur: Duration) {
         self.duration = dur;
         self.reset_timeout();
     }
 
-    pub fn timeout(&self) -> (Sleep, &Event) {
+    pub(super) fn timeout(&self) -> (Sleep, &Event) {
         (sleep_until(self.next_instant), &self.event)
     }
 }
 
-pub struct FixTimeouts {
+pub(super) struct FixTimeouts {
     heartbeat_timeout: Timeout,
     test_request_timeout: Timeout,
     logout_timeout: Timeout,
@@ -38,7 +38,7 @@ pub struct FixTimeouts {
 }
 
 impl FixTimeouts {
-    pub fn new(
+    pub(super) fn new(
         heartbeat_dur: Duration,
         test_request_dur: Duration,
         logout_dur: Duration,
@@ -65,7 +65,7 @@ impl FixTimeouts {
         }
     }
 
-    pub fn next_expiring_timeout(&mut self) -> &mut Timeout {
+    pub(super) fn next_expiring_timeout(&mut self) -> &mut Timeout {
         if !self.awaiting_logout
             && self.heartbeat_timeout.next_instant < self.test_request_timeout.next_instant
         {
@@ -77,20 +77,20 @@ impl FixTimeouts {
         }
     }
 
-    pub fn reset_heartbeat(&mut self) {
+    pub(super) fn reset_heartbeat(&mut self) {
         self.heartbeat_timeout.reset_timeout();
     }
 
-    pub fn reset_test_request(&mut self) {
+    pub(super) fn reset_test_request(&mut self) {
         self.test_request_timeout.reset_timeout();
     }
 
-    pub fn start_logout_timeout(&mut self) {
+    pub(super) fn start_logout_timeout(&mut self) {
         self.awaiting_logout = true;
         self.logout_timeout.reset_timeout();
     }
 
-    pub fn set_durations(
+    pub(super) fn set_durations(
         &mut self,
         heartbeat_dur: Duration,
         test_request_dur: Duration,

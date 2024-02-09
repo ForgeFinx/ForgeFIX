@@ -13,7 +13,7 @@ enum Response {
 }
 
 #[derive(Debug, Clone)]
-pub enum State {
+pub(super) enum State {
     Start,
     Connected,
     LogonSent,
@@ -27,10 +27,10 @@ pub enum State {
     Error,
 }
 
-pub struct MyStateMachine {
-    pub outbox: VecDeque<(MessageBuilder, Option<oneshot::Sender<bool>>)>, // https://github.com/mdeloof/statig/issues/7
-    pub sequences: Sequences,
-    pub begin_string: Arc<String>, 
+pub(super) struct MyStateMachine {
+    pub(super) outbox: VecDeque<(MessageBuilder, Option<oneshot::Sender<bool>>)>, // https://github.com/mdeloof/statig/issues/7
+    pub(super) sequences: Sequences,
+    pub(super) begin_string: Arc<String>, 
     rereceive_range: Option<(u32, u32)>,
     logout_resp_sender: Option<oneshot::Sender<bool>>,
     logon_resp_sender: Option<oneshot::Sender<bool>>,
@@ -38,7 +38,7 @@ pub struct MyStateMachine {
 }
 
 #[derive(Debug)]
-pub enum Event {
+pub(super) enum Event {
     Connect(bool),
     Accept,
     LogonReceived(u32, u32, Option<u32>, bool, Option<PossDupFlag>),
@@ -116,7 +116,7 @@ impl Event {
 }
 
 impl MyStateMachine {
-    pub fn new(settings: &SessionSettings, seqs: (u32, u32)) -> Self {
+    pub(super) fn new(settings: &SessionSettings, seqs: (u32, u32)) -> Self {
         MyStateMachine {
             outbox: VecDeque::new(),
             sequences: seqs.into(),
@@ -127,10 +127,10 @@ impl MyStateMachine {
             state: State::Start,
         }
     }
-    pub fn state(&self) -> &State {
+    pub(super) fn state(&self) -> &State {
         &self.state
     }
-    pub fn handle(&mut self, event: &Event) {
+    pub(super) fn handle(&mut self, event: &Event) {
         if let Response::Transition(new_state) = match &self.state {
             State::Start => self.start(event),
             State::Connected => self.connected(event),
@@ -145,26 +145,26 @@ impl MyStateMachine {
             self.state = new_state; 
         }
     }
-    pub fn outbox_push(&mut self, builder: MessageBuilder) {
+    pub(super) fn outbox_push(&mut self, builder: MessageBuilder) {
         self.outbox.push_back((builder, None));
     }
-    pub fn outbox_push_with_sender(
+    pub(super) fn outbox_push_with_sender(
         &mut self,
         builder: MessageBuilder,
         resp_sender: oneshot::Sender<bool>,
     ) {
         self.outbox.push_back((builder, Some(resp_sender)));
     }
-    pub fn outbox_pop(&mut self) -> Option<(MessageBuilder, Option<oneshot::Sender<bool>>)> {
+    pub(super) fn outbox_pop(&mut self) -> Option<(MessageBuilder, Option<oneshot::Sender<bool>>)> {
         self.outbox.pop_front()
     }
-    pub fn outbox_clear(&mut self) {
+    pub(super) fn outbox_clear(&mut self) {
         self.outbox.clear();
     }
-    pub fn set_logon_resp_sender(&mut self, resp_sender: Option<oneshot::Sender<bool>>) {
+    pub(super) fn set_logon_resp_sender(&mut self, resp_sender: Option<oneshot::Sender<bool>>) {
         self.logon_resp_sender = resp_sender; 
     }
-    pub fn set_logout_resp_sender(&mut self, resp_sender: Option<oneshot::Sender<bool>>) {
+    pub(super) fn set_logout_resp_sender(&mut self, resp_sender: Option<oneshot::Sender<bool>>) {
         self.logout_resp_sender = resp_sender; 
     }
     fn send_logon_response(&mut self, logon_status: bool) {
@@ -172,7 +172,7 @@ impl MyStateMachine {
             let _ = resp_sender.send(logon_status);
         }
     }
-    pub fn send_logout_response(&mut self, logout_status: bool) {
+    pub(super) fn send_logout_response(&mut self, logout_status: bool) {
         if let Some(resp_sender) = self.logout_resp_sender.take() {
             let _ = resp_sender.send(logout_status);
         }
@@ -534,7 +534,7 @@ impl MyStateMachine {
     }
 }
 
-pub fn should_pass_app_message(
+pub(super) fn should_pass_app_message(
     state_machine: &MyStateMachine,
     msg_seq_num: u32,
 ) -> bool {
@@ -552,13 +552,13 @@ pub fn should_pass_app_message(
         )
 }
 
-pub fn should_resend(state_machine: &MyStateMachine) -> bool {
+pub(super) fn should_resend(state_machine: &MyStateMachine) -> bool {
     matches!(
         state_machine.state(),
         State::LoggedIn | State::ExpectingResends { .. } | State::LogoutSent
     )
 }
-pub fn should_disconnect(
+pub(super) fn should_disconnect(
     state_machine: &MyStateMachine,
 ) -> bool {
     matches!(
@@ -567,15 +567,15 @@ pub fn should_disconnect(
     )
 }
 
-pub fn in_error_state(state_machine: &MyStateMachine) -> bool {
+pub(super) fn in_error_state(state_machine: &MyStateMachine) -> bool {
     matches!(state_machine.state(), State::Error )
 }
 
-pub fn build_logout_message_with_text(begin_string: &str, text: &[u8]) -> MessageBuilder {
+pub(super) fn build_logout_message_with_text(begin_string: &str, text: &[u8]) -> MessageBuilder {
     MessageBuilder::new(begin_string, MsgType::LOGOUT.into()).push(Tags::Text, text)
 }
 
-pub fn build_logout_message(begin_string: &str) -> MessageBuilder {
+pub(super) fn build_logout_message(begin_string: &str) -> MessageBuilder {
     MessageBuilder::new(begin_string, MsgType::LOGOUT.into())
 }
 
@@ -612,22 +612,22 @@ fn build_message_reject(
 }
 
 #[derive(Default)]
-pub struct Sequences(AtomicU32, AtomicU32);
+pub(super) struct Sequences(AtomicU32, AtomicU32);
 
 impl Sequences {
-    pub fn next_outgoing(&mut self) -> u32 {
+    pub(super) fn next_outgoing(&mut self) -> u32 {
         self.0.fetch_add(1, Ordering::Relaxed)
     }
-    pub fn incr_incoming(&mut self) -> u32 {
+    pub(super) fn incr_incoming(&mut self) -> u32 {
         self.1.fetch_add(1, Ordering::Relaxed)
     }
-    pub fn peek_incoming(&self) -> u32 {
+    pub(super) fn peek_incoming(&self) -> u32 {
         self.1.load(Ordering::Relaxed)
     }
-    pub fn peek_outgoing(&self) -> u32 {
+    pub(super) fn peek_outgoing(&self) -> u32 {
         self.0.load(Ordering::Relaxed)
     }
-    pub fn reset_incoming(&mut self, new: u32) -> std::result::Result<(), &'static str> {
+    pub(super) fn reset_incoming(&mut self, new: u32) -> std::result::Result<(), &'static str> {
         let old = self.1.fetch_max(new, Ordering::Relaxed);
         if old > new {
             Err("Value is incorrect (out of range) for this tag")

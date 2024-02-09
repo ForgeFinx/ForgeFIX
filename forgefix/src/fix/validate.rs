@@ -6,7 +6,7 @@ use crate::fix::{GarbledMessageType, SessionError};
 use chrono::{DateTime, Duration, Utc};
 
 #[allow(clippy::too_many_arguments)]
-pub fn validate_msg<'a>(
+pub(super) fn validate_msg<'a>(
     expected_sender_comp_id: &str, 
     expected_target_comp_id: &str,
     msg_type: char,
@@ -100,7 +100,7 @@ fn valid_resend_request(begin_seq_no: Option<u32>, end_seq_no: Option<u32>) -> b
     begin_seq_no.is_some() && end_seq_no.is_some()
 }
 
-pub fn validate_checksum(msg_buf: &MsgBuf) -> Result<(), SessionError> {
+pub(super) fn validate_checksum(msg_buf: &MsgBuf) -> Result<(), SessionError> {
     if !checksum_is_valid(&msg_buf.0) {
         return Err(SessionError::new_garbled_message(
             String::from("Checksum invalid"),
@@ -110,7 +110,7 @@ pub fn validate_checksum(msg_buf: &MsgBuf) -> Result<(), SessionError> {
     Ok(())
 }
 
-pub fn validate_msg_length(msg_buf: &[u8], msg_length: usize) -> Result<(), SessionError> {
+pub(super) fn validate_msg_length(msg_buf: &[u8], msg_length: usize) -> Result<(), SessionError> {
     if &msg_buf[msg_length - 7..msg_length - 4] != b"10=".as_slice() {
         return Err(SessionError::GarbledMessage {
             text: String::from("BodyLength(9) was incorrect"),
