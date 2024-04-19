@@ -1,47 +1,108 @@
 use crate::SessionSettings;
 use crate::fix::mem::MsgBuf;
 use crate::fix::SessionError;
+
+use chrono::offset::{Local};
+use chrono::{Duration, DateTime};
+
 use tokio::fs::{File, OpenOptions};
-use tokio::io::{BufWriter, AsyncWriteExt};
+use tokio::io::{AsyncWriteExt};
+use tokio::sync::{oneshot, mpsc}; 
+
+use std::time::Instant; 
+
+use anyhow::Result;
+
+const LOG_FILE_TYPE: &str = "txt";
+
+enum LoggerRequest {
+    Log(String, Instant),
+    Disconnect(oneshot::Sender<Result<(), SessionError>>),
+}
 
 pub(super) struct Logger {
-    logs: BufWriter<File>,
+    sender: mpsc::UnboundedSender<LoggerRequest>,
 }
 
 impl Logger {
-    pub(super) async fn build(settings: &SessionSettings) -> Result<Logger, SessionError> {
-        let log_path = &settings.log_dir; 
-        let sender_comp_id = settings.expected_sender_comp_id();
-        let target_comp_id = settings.expected_target_comp_id(); 
-        let filetype = "txt";
+    pub(super) async fn build(settings: &SessionSettings) -> Result<Logger> {
+        let log_path = &settings.log_dir;
+        let sendercompid = settings.expected_sender_comp_id();
+        let targetcompid = settings.expected_target_comp_id();
         std::fs::create_dir_all(log_path)?;
-        let file = OpenOptions::new()
+        let mut logs = OpenOptions::new()
             .create(true)
             .append(true)
             .open(
                 log_path
-                    .join(format!("{}-{}", sender_comp_id, target_comp_id))
-                    .with_extension(filetype),
+                    .join(format!("{}-{}", sendercompid, targetcompid))
+                    .with_extension(LOG_FILE_TYPE)
             )
             .await?;
-        Ok(Logger { logs: BufWriter::new(file) })
+
+        let (sender, mut receiver) = mpsc::unbounded_channel(); 
+
+        tokio::spawn(async move {
+            let begin_time = Local::now();
+            let begin_instant = Instant::now();
+            while let Some(req) = receiver.recv().await {
+                match req {
+                    LoggerRequest::Log(msg, instant) => {
+                        let send_time = match Duration::from_std(instant.duration_since(begin_instant)) {
+                            Ok(d) => begin_time + d,
+                            Err(_) => Local::now(),
+                        };
+                        if let Err(e) = log_message(&mut logs, msg, send_time).await {
+                            eprintln!("error logging message: {e:?}")
+                        }
+                    }
+                    LoggerRequest::Disconnect(sender) => {
+                        let resp = disconnect(&mut logs).await;
+                        let _ = sender.send(resp);
+                    }
+                }
+            }
+        }); 
+
+        Ok(Logger { sender })
     }
 
     pub(super) async fn log_message(&mut self, buf: &MsgBuf) -> Result<(), SessionError> {
-        self.logs
-            .write_all(format!("{} : {}\n", message_stamp(), buf).as_bytes())
-            .await?;
+        let req = LoggerRequest::Log(format!("{}", buf), Instant::now()); 
+        self.sender.send(req).map_err(to_io_err)?;
         Ok(())
     }
 
     pub(super) async fn disconnect(&mut self) -> Result<(), SessionError> {
-        self.logs.flush().await?;
-        Ok(())
+        let (sender, receiver) = oneshot::channel();
+        let req = LoggerRequest::Disconnect(sender);
+        self.sender.send(req).map_err(to_io_err)?;
+        receiver.await.map_err(to_io_err)?
     }
 }
 
-fn message_stamp() -> String {
-    chrono::offset::Local::now()
+async fn log_message(logs: &mut File, buf: String, time: DateTime<Local>) -> Result<(), SessionError> {
+    logs
+        .write_all(format!("{} : {}\n", message_stamp(time), buf).as_bytes())
+        .await?;
+    logs.flush().await?;
+    Ok(())
+}
+
+async fn disconnect(logs: &mut File) -> Result<(), SessionError> {
+    logs.flush().await?;
+    Ok(())
+}
+
+
+fn message_stamp(time: DateTime<Local>) -> String {
+    time
         .format("%Y%m%d-%H:%M:%S%.9f")
         .to_string()
+}
+
+fn to_io_err<E>(e: E) -> std::io::Error 
+where E: Into<Box<dyn std::error::Error + Send + Sync>>
+{
+    std::io::Error::new(std::io::ErrorKind::Other, e)
 }
