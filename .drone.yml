@@ -1,6 +1,6 @@
 pipeline:
   forge_fix:
-    image: droneimg:v2
+    image: amilar/droneimg:v30
     commands:
       - cargo build --verbose --all
       - cargo test --verbose --all
