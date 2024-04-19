@@ -1,6 +1,8 @@
 pipeline:
   forge_fix:
-    image: amilar/droneimg:v30
+    image: amilar/droneimg:v30ruby
+    environment:
+      - RUSTC_WRAPPER=
     commands:
       - cargo build --verbose --all
       - cargo test --verbose --all
