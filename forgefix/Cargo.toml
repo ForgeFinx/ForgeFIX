@@ -1,6 +1,6 @@
 [package]
 name = "forgefix"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "ForgeFIX is an opinionated FIX 4.2 client library for the buy-side written in Rust. ForgeFIX is optimized for the subset of the FIX protocol used by buy-side firms connecting to brokers and exchanges for communicating orders and fills."
 license-file = "LICENSE"
