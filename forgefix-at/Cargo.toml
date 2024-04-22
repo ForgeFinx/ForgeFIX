@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 chrono = "0.4.28"
 clap = { version = "4.1.4", features = ["derive"] }
-forgefix = { path = "../forgefix", version = "0.2.1" }
+forgefix = { path = "../forgefix", version = "0.2.2" }
 tokio = { version = "1.24.2", features = ["net", "macros", "rt", "rt-multi-thread", "io-util", "time"] }
