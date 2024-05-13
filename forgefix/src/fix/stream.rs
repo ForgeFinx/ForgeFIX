@@ -9,7 +9,7 @@ pub(super) const PEEK_LEN: usize = 32;
 pub(super) async fn preparse_stream(
     buf: &[u8],
     r: &mut TcpStream,
-    logger: &mut Logger,
+    logger: &mut impl Logger,
 ) -> Result<(char, MsgBuf), SessionError> {
     let res = decode::parse_peeked_prefix(buf);
     let peeked_info: decode::ParsedPeek = match res {
@@ -22,7 +22,7 @@ pub(super) async fn preparse_stream(
 
     let mut msg_buf = vec![0; peeked_info.msg_length];
     r.read_exact(&mut msg_buf[..]).await?;
-    logger.log_message(&msg_buf.clone().into()).await?;
+    logger.log_message(&msg_buf.clone().into())?;
     if let Err(e) = validate::validate_msg_length(&msg_buf[..], peeked_info.msg_length) {
         flush_stream(r, logger).await?;
         return Err(e);
@@ -38,7 +38,7 @@ pub(super) async fn preparse_stream(
 //  - else, remove another byte from the stream (add to sink so it can be logged)
 //  - if that was the last byte, return
 //  - else, repeat
-pub(super) async fn flush_stream(r: &mut TcpStream, l: &mut Logger) -> Result<(), SessionError> {
+pub(super) async fn flush_stream(r: &mut TcpStream, l: &mut impl Logger) -> Result<(), SessionError> {
     let mut sink = Vec::new();
     let mut buf: [u8; 1] = [0; 1];
     let mut peek_buf: [u8; 3] = [0; 3];
@@ -64,7 +64,7 @@ pub(super) async fn flush_stream(r: &mut TcpStream, l: &mut Logger) -> Result<()
             break;
         }
     }
-    l.log_message(&sink.into()).await?;
+    l.log_message(&sink.into())?;
     Ok(())
 }
 
@@ -95,7 +95,7 @@ pub(super) async fn disconnect(mut stream: TcpStream) {
 pub(super) async fn send_message(
     msg_buf: &MsgBuf,
     r: &mut TcpStream,
-    l: &mut Logger,
+    l: &mut impl Logger,
 ) -> Result<(), SessionError> {
     r.write_all(&msg_buf[..]).await.map_err(|e| {
         if e.kind() == std::io::ErrorKind::BrokenPipe {
@@ -104,6 +104,6 @@ pub(super) async fn send_message(
             e.into()
         }
     })?;
-    l.log_message(msg_buf).await?;
+    l.log_message(msg_buf)?;
     Ok(())
 }

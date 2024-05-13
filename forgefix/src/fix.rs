@@ -17,7 +17,7 @@ use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
 use crate::fix::generated::{
     is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags,
 };
-use crate::fix::log::Logger;
+use crate::fix::log::{Logger, FileLogger};
 use crate::fix::resend::Transformer;
 use crate::fix::session::{Event, MyStateMachine};
 use crate::fix::stopwatch::FixTimeouts;
@@ -301,7 +301,7 @@ pub(super) async fn spin_session(
 
     let additional_headers = AdditionalHeaders::build(&settings);
     let store = Store::build(&settings).await?;
-    let mut logger = Logger::build(&settings).await?;
+    let mut logger = FileLogger::build(&settings).await?;
     let sequences = store.get_sequences(settings.epoch.clone()).await?;
     let mut state_machine = MyStateMachine::new(&settings, sequences);
 
@@ -435,7 +435,7 @@ async fn handle_msg(
     store: &Store,
     settings: &SessionSettings,
     stream: &mut TcpStream,
-    logger: &mut Logger,
+    logger: &mut impl Logger,
     additional_headers: &AdditionalHeaders,
     message_received_event_sender: &mpsc::UnboundedSender<Arc<MsgBuf>>,
 ) -> Result<()> {
@@ -608,7 +608,7 @@ async fn disconnect(
     epoch: Arc<String>,
     state_machine: &MyStateMachine,
     stream: TcpStream,
-    mut logger: Logger, 
+    mut logger: FileLogger, 
 ) -> Result<()> {
     request_receiver.close();
     store
@@ -651,7 +651,7 @@ async fn send_outgoing_messages(
     additional_headers: &AdditionalHeaders,
     store: &Store,
     epoch: Arc<String>,
-    logger: &mut Logger,
+    logger: &mut impl Logger,
     fix_timeouts: &mut FixTimeouts,
 ) -> Result<(), SessionError> {
     if !state_machine.outbox.is_empty() {
@@ -685,7 +685,7 @@ async fn resend_messages(
     mut messages: Vec<(u32, Vec<u8>)>,
     stream: &mut TcpStream,
     additional_headers: &AdditionalHeaders,
-    logger: &mut Logger,
+    logger: &mut impl Logger,
 ) -> Result<(), SessionError> {
     messages.sort_by(|(a, _), (b, _)| a.cmp(b));
     let mut session_msg_count = 0;

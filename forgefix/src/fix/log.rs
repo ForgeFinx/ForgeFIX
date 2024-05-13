@@ -20,12 +20,25 @@ enum LoggerRequest {
     Disconnect(oneshot::Sender<Result<(), SessionError>>),
 }
 
-pub(super) struct Logger {
+pub(super) struct FileLogger {
     sender: mpsc::UnboundedSender<LoggerRequest>,
 }
 
-impl Logger {
-    pub(super) async fn build(settings: &SessionSettings) -> Result<Logger> {
+pub(super) trait Logger {
+    fn log_message(&mut self, msg: &MsgBuf) -> Result<(), SessionError>;
+}
+
+impl Logger for FileLogger {
+    fn log_message(&mut self, buf: &MsgBuf) -> Result<(), SessionError> {
+        let req = LoggerRequest::Log(format!("{}", buf), Instant::now()); 
+        self.sender.send(req).map_err(to_io_err)?;
+        Ok(())
+    }
+}
+
+
+impl FileLogger {
+    pub(super) async fn build(settings: &SessionSettings) -> Result<FileLogger> {
         let log_path = &settings.log_dir;
         let sendercompid = settings.expected_sender_comp_id();
         let targetcompid = settings.expected_target_comp_id();
@@ -64,13 +77,7 @@ impl Logger {
             }
         }); 
 
-        Ok(Logger { sender })
-    }
-
-    pub(super) async fn log_message(&mut self, buf: &MsgBuf) -> Result<(), SessionError> {
-        let req = LoggerRequest::Log(format!("{}", buf), Instant::now()); 
-        self.sender.send(req).map_err(to_io_err)?;
-        Ok(())
+        Ok(FileLogger { sender })
     }
 
     pub(super) async fn disconnect(&mut self) -> Result<(), SessionError> {
