@@ -446,12 +446,21 @@ fn bytes_to_u32(bytes: &[u8]) -> Option<u32> {
     Some(accum)
 }
 
+pub(super) fn parse_header(header: &[u8]) -> Result<usize, SessionError> {
+    let prefix = parse_peeked_prefix(header)?; 
+    // body_length does not account for the 7 byte checksum (10=xxx|) 
+    // and len_end is 1 less that we would like 
+    Ok(prefix.body_length - (header.len() - (prefix.len_end + 1)) + 7)
+}
+
 pub(super) struct ParsedPeek {
     pub msg_type: char,
+    #[allow(dead_code)]
     pub msg_length: usize,
     pub len_start: usize,
     pub len_end: usize,
     pub fixed_fields_end: usize,
+    pub body_length: usize,
 }
 pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, SessionError> {
     const EXPECTED_PREFIX: &[u8] = b"8=FIX.4.2\x019=";
@@ -530,6 +539,7 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
         len_start: EXPECTED_PREFIX.len(),
         len_end,
         fixed_fields_end,
+        body_length,
     })
 }
 

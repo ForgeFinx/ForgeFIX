@@ -325,7 +325,7 @@ pub(super) async fn spin_session(
     let logout_dur = logout_duration(heartbt_dur);
     let mut fix_timeouts = FixTimeouts::new(*heartbt_dur, tr_dur, logout_dur);
 
-    let mut peek_buf: [u8; stream::PEEK_LEN] = [0; stream::PEEK_LEN];
+    let mut header_buf: stream::HeaderBuf<{ stream::PEEK_LEN }> = stream::HeaderBuf::new(); 
 
     // LOOP
 
@@ -361,9 +361,9 @@ pub(super) async fn spin_session(
         let (timeout_fut, timeout_event) = next_timeout.timeout();
 
         tokio::select! {
-            bytes_read = stream::peek_stream(&mut stream, &mut peek_buf, stream::PEEK_LEN) => {
-                let maybe_message = match bytes_read {
-                    Ok(b) => stream::preparse_stream(&peek_buf[..b], &mut stream, &mut logger).await,
+            maybe_err = stream::read_header(&mut stream, &mut header_buf) => {
+                let maybe_message = match maybe_err {
+                    Ok(()) => stream::read_message(&mut stream, &mut header_buf, &mut logger).await,
                     Err(SessionError::IoError(e)) => bail!("{e:?}"),
                     Err(e) => Err(e),
                 };
@@ -373,17 +373,16 @@ pub(super) async fn spin_session(
                 }
 
                 handle_msg(
-                    maybe_message,
-                    &mut state_machine,
+                    maybe_message, 
+                    &mut state_machine, 
                     &mut fix_timeouts,
                     &store,
                     &settings,
-                    &mut stream,
+                    &mut stream, 
                     &mut logger,
                     &additional_headers,
                     &message_received_event_sender,
-                )
-                .await?;
+                ).await?; 
             }
             Some(req) = request_receiver.recv() => {
                 handle_req(req, &mut state_machine);
@@ -429,7 +428,7 @@ fn handle_req(req: Request, state_machine: &mut MyStateMachine) {
 
 #[allow(clippy::too_many_arguments)]
 async fn handle_msg(
-    maybe_msg: Result<(char, MsgBuf), SessionError>,
+    maybe_msg: Result<MsgBuf, SessionError>,
     state_machine: &mut MyStateMachine,
     fix_timeouts: &mut FixTimeouts,
     store: &Store,
@@ -441,22 +440,16 @@ async fn handle_msg(
 ) -> Result<()> {
     fix_timeouts.reset_test_request();
 
-    let msg_type_char: char;
-    let msg_buf: MsgBuf;
-    match maybe_msg {
-        Ok((t, b)) => {
-            msg_type_char = t;
-            msg_buf = b;
-        }
+    let msg = match maybe_msg {
+        Ok(b) => Arc::new(b),
         Err(error) => {
-            state_machine.handle(&Event::SessionErrorReceived { error });
+            state_machine.handle(&Event::SessionErrorReceived { error }); 
             return Ok(());
         }
-    };
+    }; 
 
     // PARSE
 
-    let msg = Arc::new(msg_buf);
     let mut cb: SessionParserCallback = Default::default();
 
     if let Err(error) = crate::fix::decode::parse(&msg.as_ref()[..], &mut cb) {
@@ -491,7 +484,7 @@ async fn handle_msg(
     // HANDLE
 
     let msg_seq_num = cb.msg_seq_num;
-    let maybe_msg_type: Result<MsgType, _> = msg_type_char.try_into();
+    let maybe_msg_type = cb.msg_type.try_into(); 
 
     match maybe_msg_type {
         Ok(LOGON) => {
