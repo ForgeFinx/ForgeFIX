@@ -455,8 +455,6 @@ pub(super) fn parse_header(header: &[u8]) -> Result<usize, SessionError> {
 
 pub(super) struct ParsedPeek {
     pub msg_type: char,
-    #[allow(dead_code)]
-    pub msg_length: usize,
     pub len_start: usize,
     pub len_end: usize,
     pub fixed_fields_end: usize,
@@ -517,6 +515,7 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
             GarbledMessageType::BodyLengthIssue,
         ));
     }
+
     let msg_type = if &peeked[at..at + 3] == b"35=" && peeked[at + 4] == b'\x01' {
         peeked[at + 3]
     } else {
@@ -527,15 +526,8 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
     };
     let fixed_fields_end = at + 5;
 
-    // "at" is at the first character counted by BodyLength
-    // BodyLength is the count of all the bytes up until and including the SOH before the checksum
-    // the checksum will always be 10=xxx| which is 7 bytes
-    // the value of "at" also represents the number of bytes in the message before the first byte counted by body length
-    //  Therefore, "at" + "body_length" + 7 = total_msg_length
-    let msg_length = body_length + at + 7;
     Ok(ParsedPeek {
         msg_type: msg_type as char,
-        msg_length,
         len_start: EXPECTED_PREFIX.len(),
         len_end,
         fixed_fields_end,

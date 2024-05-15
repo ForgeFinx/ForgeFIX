@@ -782,13 +782,14 @@ mod test {
         for data in message_bytes.iter() {
             let mut r = BufReader::new(*data);
             let ParsedPeek {
-                msg_length,
                 len_start,
+                body_length,
+                len_end,
                 ..
             } = crate::fix::decode::parse_peeked_prefix(&data[..32]).unwrap();
             assert_eq!(len_start, 12);
             // assert_eq!(len_end, 15);
-            let mut msg_buf = vec![0; msg_length];
+            let mut msg_buf = vec![0; 32 + (body_length - (32 - (len_end + 1)) + 7)];
             r.read_exact(&mut msg_buf[..])
                 .await
                 .expect("expected no error");
