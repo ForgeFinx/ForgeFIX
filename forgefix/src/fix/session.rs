@@ -39,7 +39,7 @@ pub(super) struct MyStateMachine {
 
 #[derive(Debug)]
 pub(super) enum Event {
-    Connect(bool),
+    Connect(bool, bool),
     Accept,
     LogonReceived(u32, u32, Option<u32>, bool, Option<PossDupFlag>),
     LogoutSent,
@@ -397,14 +397,16 @@ impl MyStateMachine {
     }
     fn start(&mut self, event: &Event) -> Response {
         match event {
-            Event::Connect(reset_seq_num) => {
+            Event::Connect(reset_seq_num, reset_seq_num_flag) => {
                 let mut builder: MessageBuilder =
                     MessageBuilder::new(&self.begin_string, MsgType::LOGON.into())
                         .push(Tags::EncryptMethod, b"0")
                         .push(Tags::HeartBtInt, 30.to_string().as_bytes());
                 if *reset_seq_num {
-                    builder = builder.push(Tags::ResetSeqNumFlag, b"Y");
                     self.reset_sequences();
+                }
+                if *reset_seq_num_flag {
+                    builder = builder.push(Tags::ResetSeqNumFlag, b"Y");
                 }
                 self.outbox_push(builder);
                 Response::Transition(State::LogonSent)

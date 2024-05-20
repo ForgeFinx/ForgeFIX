@@ -159,6 +159,8 @@ pub struct SessionSettings {
     log_dir: PathBuf,
     heartbeat_timeout: Duration,
     start_time: NaiveTime, 
+    reset_seq_nums: bool,
+    reset_flag_on_initial_logon: bool,
 }
 
 /// A builder for easily configuring all the fields of a [`SessionSettings`]
@@ -180,6 +182,8 @@ pub struct SessionSettingsBuilder {
     log_dir: Option<PathBuf>,
     heartbeat_timeout: Option<Duration>,
     start_time: Option<NaiveTime>, 
+    reset_seq_nums: Option<bool>,
+    reset_flag_on_initial_logon: Option<bool>,
 }
 
 
@@ -269,6 +273,25 @@ impl SessionSettingsBuilder {
         self.heartbeat_timeout = Some(hb_timeout);
     }
 
+    /// Reset sequence numbers to (1,1) upon initiating FIX connection, regardless of whether
+    /// currently in FIX session. *Only after counterparty agreement*. 
+    pub fn with_reset_seq_num(mut self, reset: bool) -> Self {
+        self.set_reset_seq_num(reset);
+        self
+    }
+    pub fn set_reset_seq_num(&mut self, reset: bool) {
+        self.reset_seq_nums = Some(reset);
+    }
+
+    /// Set `ResetSeqNumFlag(141)` to `Y` upon initial logon of FIX session. 
+    pub fn with_reset_flag_on_initial_logon(mut self, use_flag: bool) -> Self {
+        self.set_reset_flag_on_initial_logon(use_flag);
+        self
+    }
+    pub fn set_reset_flag_on_initial_logon(&mut self, use_flag: bool) {
+        self.reset_flag_on_initial_logon = Some(use_flag);
+    }
+
     /// Build the [`SessionSettings`] struct. 
     ///
     /// Returns an `Err(ApplicationError::SettingRequired)` if not all of the required fields
@@ -291,6 +314,8 @@ impl SessionSettingsBuilder {
             addr,
             store_path,
             log_dir,
+            reset_seq_nums: self.reset_seq_nums.unwrap_or(false),
+            reset_flag_on_initial_logon: self.reset_flag_on_initial_logon.unwrap_or(false),
         })
     }
 }

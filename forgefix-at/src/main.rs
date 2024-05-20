@@ -125,6 +125,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
         .with_log_dir(opts.log.clone())
         .with_heartbeat_timeout(opts.heartbeat_timeout)
         .with_start_time(opts.start)
+        .with_reset_flag_on_initial_logon(true)
         .build()?;
 
     if is_server {

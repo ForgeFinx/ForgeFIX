@@ -307,15 +307,17 @@ pub(super) async fn spin_session(
 
     let logon_resp_sender = receive_logon_request(&mut request_receiver).await;
 
-    let start_new_session = is_new_session(&store, &settings).await?; 
     match settings.engine_type {
         FixEngineType::Server => {
             state_machine.set_logon_resp_sender(logon_resp_sender);
             state_machine.handle(&crate::fix::session::Event::Accept);
         }
         FixEngineType::Client => {
+            let start_new_session = is_new_session(&store, &settings).await?; 
+            let reset_seq_nums = start_new_session || settings.reset_seq_nums; 
+            let reset_seq_nums_flag = (start_new_session && settings.reset_flag_on_initial_logon) || settings.reset_seq_nums; 
             state_machine.set_logon_resp_sender(logon_resp_sender);
-            state_machine.handle(&crate::fix::session::Event::Connect(start_new_session));
+            state_machine.handle(&crate::fix::session::Event::Connect(reset_seq_nums, reset_seq_nums_flag));
         }
     }
 

@@ -87,6 +87,11 @@ enum c_fix_error ssb_set_heartbeat_timeout(session_settings_builder_t builder,
 
 enum c_fix_error ssb_set_start_time(session_settings_builder_t builder, const char *start_time_str);
 
+enum c_fix_error ssb_set_reset_seq_num(session_settings_builder_t builder, int reset);
+
+enum c_fix_error ssb_set_reset_flag_on_initial_logon(session_settings_builder_t builder,
+                                                     int use_flag);
+
 session_settings_t ssb_build(session_settings_builder_t builder);
 
 void session_settings_builder_free(session_settings_builder_t builder);

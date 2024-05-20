@@ -2,7 +2,7 @@ use forgefix::fix::encode::SerializedInt;
 use forgefix::fix::generated::Tags;
 use forgefix::{SessionSettingsBuilder, SessionSettings, ApplicationError, FixApplicationHandle, FixApplicationInitiator};
 
-use std::ffi::{c_char, c_ulong, CStr};
+use std::ffi::{c_char, c_ulong, CStr, c_int};
 use std::net::SocketAddr;
 use std::time::Duration;
 
@@ -431,6 +431,34 @@ pub unsafe extern "C" fn ssb_set_start_time(
     };
 
     (*builder).set_start_time(start_time); 
+    CFixError::OK
+}
+
+#[no_mangle]
+pub extern "C" fn ssb_set_reset_seq_num(
+    builder: session_settings_builder_t,
+    reset: c_int,
+) -> CFixError {
+    if builder.is_null() {
+        return CFixError::NullPointer;
+    }
+
+    let reset = reset != 0; 
+    unsafe { (*builder).set_reset_seq_num(reset); }
+    CFixError::OK
+}
+
+#[no_mangle]
+pub extern "C" fn ssb_set_reset_flag_on_initial_logon(
+    builder: session_settings_builder_t,
+    use_flag: c_int,
+) -> CFixError {
+    if builder.is_null() {
+        return CFixError::NullPointer; 
+    }
+
+    let use_flag = use_flag != 0; 
+    unsafe { (*builder).set_reset_flag_on_initial_logon(use_flag); }
     CFixError::OK
 }
 

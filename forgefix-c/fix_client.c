@@ -31,6 +31,7 @@ int c_main(const char *log, const char *store) {
     ssb_set_log_dir(builder, log); 
     ssb_set_heartbeat_timeout(builder, 30); 
     ssb_set_start_time(builder, "23:59:59"); 
+    ssb_set_reset_flag_on_initial_logon(builder, 1); 
 
     session_settings_t settings = ssb_build(builder); 
     if (settings == NULL) {
