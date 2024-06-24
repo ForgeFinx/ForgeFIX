@@ -130,7 +130,7 @@ enum Request {
 /// Errors that can occur while running ForgeFIX. 
 #[derive(Debug, Error)]
 pub enum ApplicationError {
-    #[error("An I/O error occured")]
+    #[error("An I/O error occured: {0}")]
     IoError(#[from] std::io::Error),
     #[error("Session ended unexpectedly")]
     SessionEnded,

@@ -1,7 +1,7 @@
-use crate::{SessionSettings}; 
 use crate::fix::encode::{MessageBuilder, SerializedInt};
 use crate::fix::generated::{GapFillFlag, MsgType, PossDupFlag, SessionRejectReason, Tags};
 use crate::fix::{GarbledMessageType, SessionError};
+use crate::SessionSettings;
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
@@ -9,7 +9,7 @@ use tokio::sync::oneshot;
 
 enum Response {
     Handled,
-    Transition(State), 
+    Transition(State),
 }
 
 #[derive(Debug, Clone)]
@@ -18,9 +18,7 @@ pub(super) enum State {
     Connected,
     LogonSent,
     LoggedIn,
-    ExpectingResends {
-        return_state: Arc<State>, 
-    },
+    ExpectingResends { return_state: Arc<State> },
     ExpectingTestResponse,
     LogoutSent,
     End,
@@ -30,7 +28,7 @@ pub(super) enum State {
 pub(super) struct MyStateMachine {
     pub(super) outbox: VecDeque<(MessageBuilder, Option<oneshot::Sender<bool>>)>, // https://github.com/mdeloof/statig/issues/7
     pub(super) sequences: Sequences,
-    pub(super) begin_string: Arc<String>, 
+    pub(super) begin_string: Arc<String>,
     rereceive_range: Option<(u32, u32)>,
     logout_resp_sender: Option<oneshot::Sender<bool>>,
     logon_resp_sender: Option<oneshot::Sender<bool>>,
@@ -136,13 +134,15 @@ impl MyStateMachine {
             State::Connected => self.connected(event),
             State::LogonSent => self.logon_sent(event),
             State::LoggedIn => self.logged_in(event),
-            State::ExpectingResends { return_state } => self.expecting_resends(event, return_state.clone()),
+            State::ExpectingResends { return_state } => {
+                self.expecting_resends(event, return_state.clone())
+            }
             State::ExpectingTestResponse => self.expecting_test_response(event),
             State::LogoutSent => self.logout_sent(event),
             State::End => self.end(event),
-            State::Error => self.error(event), 
+            State::Error => self.error(event),
         } {
-            self.state = new_state; 
+            self.state = new_state;
         }
     }
     pub(super) fn outbox_push(&mut self, builder: MessageBuilder) {
@@ -162,10 +162,10 @@ impl MyStateMachine {
         self.outbox.clear();
     }
     pub(super) fn set_logon_resp_sender(&mut self, resp_sender: Option<oneshot::Sender<bool>>) {
-        self.logon_resp_sender = resp_sender; 
+        self.logon_resp_sender = resp_sender;
     }
     pub(super) fn set_logout_resp_sender(&mut self, resp_sender: Option<oneshot::Sender<bool>>) {
-        self.logout_resp_sender = resp_sender; 
+        self.logout_resp_sender = resp_sender;
     }
     fn send_logon_response(&mut self, logon_status: bool) {
         if let Some(resp_sender) = self.logon_resp_sender.take() {
@@ -185,11 +185,14 @@ impl MyStateMachine {
                 None
             } else if expected < incoming {
                 self.rereceive_range = Some((expected, incoming));
-                let message = MessageBuilder::new(&self.begin_string, MsgType::RESEND_REQUEST.into())
-                    .push(Tags::BeginSeqNo, SerializedInt::from(expected).as_bytes())
-                    .push(Tags::EndSeqNo, SerializedInt::from(0u32).as_bytes());
+                let message =
+                    MessageBuilder::new(&self.begin_string, MsgType::RESEND_REQUEST.into())
+                        .push(Tags::BeginSeqNo, SerializedInt::from(expected).as_bytes())
+                        .push(Tags::EndSeqNo, SerializedInt::from(0u32).as_bytes());
                 self.outbox_push(message);
-                Some(Response::Transition(State::ExpectingResends { return_state: Arc::new(return_state) }))
+                Some(Response::Transition(State::ExpectingResends {
+                    return_state: Arc::new(return_state),
+                }))
             } else if expected > incoming && !event.is_poss_dup() {
                 let message = build_logout_message_with_text(
                     &self.begin_string,
@@ -228,33 +231,36 @@ impl MyStateMachine {
     // superstate.
     fn post_logon(&mut self, event: &Event) -> Response {
         match event {
-            Event::SessionErrorReceived { 
+            Event::SessionErrorReceived {
                 error:
                     SessionError::GarbledMessage {
                         text,
                         garbled_msg_type: GarbledMessageType::BeginStringIssue,
                     },
-            } => { 
-                self.outbox_push(build_logout_message_with_text(&self.begin_string, text.as_bytes()));
+            } => {
+                self.outbox_push(build_logout_message_with_text(
+                    &self.begin_string,
+                    text.as_bytes(),
+                ));
                 Response::Transition(State::Error)
             }
             Event::SessionErrorReceived {
                 error: SessionError::TcpDisconnection,
             } => Response::Transition(State::Error),
             Event::LogoutReceived(..) => {
-                let builder = build_logout_message(&self.begin_string); 
-                self.outbox_push(builder); 
+                let builder = build_logout_message(&self.begin_string);
+                self.outbox_push(builder);
                 Response::Transition(State::End)
             }
             Event::SendTestRequest(_) => {
                 let builder = MessageBuilder::new(&self.begin_string, MsgType::TEST_REQUEST.into())
-                    .push(Tags::TestReqID, b"TEST"); 
+                    .push(Tags::TestReqID, b"TEST");
                 self.outbox_push(builder);
                 Response::Transition(State::ExpectingTestResponse)
             }
             Event::SendHeartbeat => {
                 let builder = MessageBuilder::new(&self.begin_string, MsgType::HEARTBEAT.into());
-                self.outbox_push(builder); 
+                self.outbox_push(builder);
                 Response::Handled
             }
             Event::LogoutSent => Response::Transition(State::LogoutSent),
@@ -292,7 +298,7 @@ impl MyStateMachine {
                         *next = *new_seq_no;
                     } else {
                         self.reset_expected_incoming(*msg_seq_num, *new_seq_no);
-                        return Response::Transition((*return_state).clone())
+                        return Response::Transition((*return_state).clone());
                     }
                 }
                 Event::ApplicationMessageReceived(..) => {
@@ -307,7 +313,7 @@ impl MyStateMachine {
                 let _ = self.sequences.reset_incoming(*end + 1);
                 self.rereceive_range = None;
                 if matches!(*return_state, State::End) {
-                    let message = build_logout_message(&self.begin_string); 
+                    let message = build_logout_message(&self.begin_string);
                     self.outbox_push(message);
                 }
                 return Response::Transition((*return_state).clone());
@@ -323,9 +329,7 @@ impl MyStateMachine {
                 }
                 Response::Transition(State::LoggedIn)
             }
-            Event::SendHeartbeat | Event::SendTestRequest(_) => {
-                Response::Transition(State::Error)
-            }
+            Event::SendHeartbeat | Event::SendTestRequest(_) => Response::Transition(State::Error),
             _ => self.logged_in(event),
         }
     }
@@ -343,7 +347,10 @@ impl MyStateMachine {
             Event::SessionErrorReceived {
                 error: SessionError::MissingMsgSeqNum { text },
             } => {
-                self.outbox_push(build_logout_message_with_text(&self.begin_string, text.as_bytes()));
+                self.outbox_push(build_logout_message_with_text(
+                    &self.begin_string,
+                    text.as_bytes(),
+                ));
                 Response::Transition(State::Error)
             }
             Event::SequenceResetReceived {
@@ -352,14 +359,14 @@ impl MyStateMachine {
                 ..
             } => {
                 self.reset_expected_incoming(*msg_seq_num, *new_seq_no);
-                Response::Handled 
+                Response::Handled
             }
             Event::TestRequestReceived { test_req_id, .. } => {
                 let builder: MessageBuilder =
                     MessageBuilder::new(&self.begin_string, MsgType::HEARTBEAT.into())
                         .push(Tags::TestReqID, test_req_id);
                 self.outbox_push(builder);
-                Response::Handled 
+                Response::Handled
             }
             Event::ApplicationMessageReceived(..) => Response::Handled,
             Event::SessionErrorReceived {
@@ -384,10 +391,13 @@ impl MyStateMachine {
                 if *reject_reason == Some(SessionRejectReason::COMPID_PROBLEM)
                     || *reject_reason == Some(SessionRejectReason::SENDINGTIME_ACCURACY_PROBLEM)
                 {
-                    self.outbox_push(build_logout_message_with_text(&self.begin_string, text.as_bytes()));
+                    self.outbox_push(build_logout_message_with_text(
+                        &self.begin_string,
+                        text.as_bytes(),
+                    ));
                     return Response::Transition(State::Error);
                 }
-                Response::Handled 
+                Response::Handled
             }
             Event::SessionErrorReceived {
                 error: SessionError::TcpDisconnection,
@@ -419,7 +429,7 @@ impl MyStateMachine {
     }
     #[allow(unused_variables)]
     fn end(&mut self, event: &Event) -> Response {
-        Response::Handled 
+        Response::Handled
     }
     fn connected(&mut self, event: &Event) -> Response {
         match event {
@@ -434,7 +444,8 @@ impl MyStateMachine {
                     ..
                 } => {
                     if *reject_reason != Some(SessionRejectReason::COMPID_PROBLEM) {
-                        let builder = build_logout_message_with_text(&self.begin_string, text.as_bytes());
+                        let builder =
+                            build_logout_message_with_text(&self.begin_string, text.as_bytes());
                         self.outbox_push(builder);
                     }
                     self.send_logon_response(false);
@@ -518,26 +529,17 @@ impl MyStateMachine {
         }
 
         match event {
-            Event::LogoutReceived(..) => {
-                Response::Transition(State::End)
-            }
-            Event::LogoutExpired => {
-                Response::Transition(State::Error)
-            }
+            Event::LogoutReceived(..) => Response::Transition(State::End),
+            Event::LogoutExpired => Response::Transition(State::Error),
             Event::SessionErrorReceived { .. }
             | Event::SendTestRequest { .. }
-            | Event::SendHeartbeat => {
-                Response::Transition(State::Error)
-            }
+            | Event::SendHeartbeat => Response::Transition(State::Error),
             _ => Response::Handled,
         }
     }
 }
 
-pub(super) fn should_pass_app_message(
-    state_machine: &MyStateMachine,
-    msg_seq_num: u32,
-) -> bool {
+pub(super) fn should_pass_app_message(state_machine: &MyStateMachine, msg_seq_num: u32) -> bool {
     if let Some((next, _)) = state_machine.rereceive_range {
         return msg_seq_num == next;
     }
@@ -558,17 +560,12 @@ pub(super) fn should_resend(state_machine: &MyStateMachine) -> bool {
         State::LoggedIn | State::ExpectingResends { .. } | State::LogoutSent
     )
 }
-pub(super) fn should_disconnect(
-    state_machine: &MyStateMachine,
-) -> bool {
-    matches!(
-        state_machine.state(),
-        State::End | State::Error
-    )
+pub(super) fn should_disconnect(state_machine: &MyStateMachine) -> bool {
+    matches!(state_machine.state(), State::End | State::Error)
 }
 
 pub(super) fn in_error_state(state_machine: &MyStateMachine) -> bool {
-    matches!(state_machine.state(), State::Error )
+    matches!(state_machine.state(), State::Error)
 }
 
 pub(super) fn build_logout_message_with_text(begin_string: &str, text: &[u8]) -> MessageBuilder {

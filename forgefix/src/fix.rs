@@ -49,7 +49,7 @@ mod validate;
 
 #[derive(Debug, Error)]
 enum SessionError {
-    #[error("An I/O error occured")]
+    #[error("An I/O error occured: {0}")]
     IoError(#[from] io::Error),
     #[error("A garbled message was received")]
     GarbledMessage {
