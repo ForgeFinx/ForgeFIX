@@ -35,7 +35,7 @@
 use crate::fix::checksum::AsyncChecksumWriter;
 use crate::fix::generated::Tags;
 use crate::SessionSettings;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 use std::io::{Cursor, Write};
 use std::time::Instant;
 use tokio::io::{AsyncWrite, AsyncWriteExt};
@@ -48,6 +48,16 @@ pub const TIME_FORMAT: &str = "%Y%m%d-%H:%M:%S%.3f";
 /// Returns the current time in [`TIME_FORMAT`]
 pub fn formatted_time() -> String {
     format!("{}", Utc::now().format(TIME_FORMAT))
+}
+
+fn num_digits(n: u64) -> usize {
+    let mut count = 1;
+    let mut num = n;
+    while num > 9u64 {
+        count += 1;
+        num /= 10;
+    }
+    count as usize
 }
 
 /// A struct for building FIX messages.
@@ -154,29 +164,40 @@ impl MessageBuilder {
         W: AsyncWrite + Unpin,
     {
         let mut writer = AsyncChecksumWriter::new(sink);
-        let body_len = self.body_len();
-        let msg_seq_num_str = format!("34={}\x01", msg_seq_num);
-
         writer
             .write_all(&self.preamble.get_ref()[..self.preamble.position() as usize])
             .await?;
-        let body_len_str =
-            (body_len + additional_headers.len() + msg_seq_num_str.len()).to_string();
-        writer.write_all(body_len_str.as_bytes()).await?;
+
+        let body_len = self.body_len();
+        let msg_seq_num_len = num_digits(msg_seq_num as u64) + 4;
+
+        writer
+            .write_all(
+                SerializedInt::from((body_len + additional_headers.len() + msg_seq_num_len) as u64)
+                    .as_bytes(),
+            )
+            .await?;
         writer.write_all(SOH).await?;
-        let msg_type_str = format!("35={}\x01", self.msg_type);
-        writer.write_all(msg_type_str.as_bytes()).await?;
-        writer.write_all(msg_seq_num_str.as_bytes()).await?;
+
+        writer.write_all(b"35=").await?;
+        writer.write_all(&[self.msg_type as usize as u8]).await?;
+        writer.write_all(SOH).await?;
+
+        writer.write_all(b"34=").await?;
+        writer
+            .write_all(SerializedInt::from(msg_seq_num).as_bytes())
+            .await?;
+        writer.write_all(SOH).await?;
 
         additional_headers
             .write_all(&mut writer, sending_time)
             .await?;
 
         writer.write_all(self.main_buffer.get_ref()).await?;
+
         let checksum: usize = writer.checksum();
-        let checksum_str = format!("{:0>3}", checksum);
         writer.write_all(b"10=").await?;
-        writer.write_all(checksum_str.as_bytes()).await?;
+        write_zero_padded(&mut writer, checksum as u64, 3).await?;
         writer.write_all(SOH).await?;
         Ok(())
     }
@@ -248,6 +269,22 @@ fn format_fields(fields: &[(u32, Vec<u8>)]) -> Vec<u8> {
     buf.into_inner()
 }
 
+async fn write_zero_padded<W>(w: &mut W, value: u64, len: usize) -> std::io::Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    let n = num_digits(value);
+    let zeros: &[u8] = match len - n {
+        1 => b"0",
+        2 => b"00",
+        3 => b"000",
+        _ => b"",
+    };
+
+    w.write_all(zeros).await?;
+    w.write_all(SerializedInt::from(value).as_bytes()).await
+}
+
 impl AdditionalHeaders {
     pub fn new(fields: Vec<(u32, Vec<u8>)>) -> Self {
         let mut at = 0;
@@ -279,15 +316,22 @@ impl AdditionalHeaders {
     where
         W: AsyncWrite + Unpin,
     {
-        let sending_time_field = format!(
-            "{}={}\x01",
-            u32::from(Tags::SendingTime),
-            sending_time.format(TIME_FORMAT)
-        )
-        .into_bytes();
-        assert_eq!(sending_time_field.len(), 21 + 4);
         w.write_all(&self.prefix[..]).await?;
-        w.write_all(&sending_time_field[..]).await?;
+
+        w.write_all(b"52=").await?;
+        w.write_all(SerializedInt::from(sending_time.year() as u32).as_bytes())
+            .await?;
+        write_zero_padded(w, sending_time.month() as u64, 2).await?;
+        write_zero_padded(w, sending_time.day() as u64, 2).await?;
+        w.write_all(b"-").await?;
+        write_zero_padded(w, sending_time.hour() as u64, 2).await?;
+        w.write_all(b":").await?;
+        write_zero_padded(w, sending_time.minute() as u64, 2).await?;
+        w.write_all(b":").await?;
+        write_zero_padded(w, sending_time.second() as u64, 2).await?;
+        w.write_all(b".000").await?;
+        w.write_all(SOH).await?;
+
         w.write_all(&self.suffix[..]).await
     }
     pub(super) fn len(&self) -> usize {
