@@ -781,12 +781,10 @@ async fn build_message_with_headers(
     msg_seq_num: u32,
     additional_headers: &AdditionalHeaders,
 ) -> Result<MsgBuf, SessionError> {
-    let mut buf = Vec::new();
-    let mut cur = tokio::io::BufWriter::new(&mut buf);
+    let mut buf = Vec::with_capacity(1024);
 
-    msg.build_async(&mut cur, msg_seq_num, additional_headers, Utc::now())
+    msg.build_async(&mut buf, msg_seq_num, additional_headers, Utc::now())
         .await?;
-    cur.flush().await?;
     Ok(buf.into())
 }
 
