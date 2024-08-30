@@ -13,9 +13,9 @@ pub(super) fn validate_msg<'a>(
     msg_seq_num: u32,
     target_comp_id: Option<&'a [u8]>,
     sender_comp_id: Option<&'a [u8]>,
-    sending_time: Option<DateTime<Utc>>,
+    sending_time: Option<i64>,
     poss_dup_flag: Option<char>,
-    orig_sending_time: Option<DateTime<Utc>>,
+    orig_sending_time: Option<i64>,
     begin_seq_no: Option<u32>,
     end_seq_no: Option<u32>,
 ) -> Result<(), SessionError> {
@@ -54,7 +54,7 @@ pub(super) fn validate_msg<'a>(
         ));
     }
 
-    if !valid_sending_time(sending_time.unwrap(), Duration::seconds(10)) {
+    if !valid_sending_time(sending_time.unwrap(), 10) {
         return Err(SessionError::new_message_rejected(
             Some(SessionRejectReason::SENDINGTIME_ACCURACY_PROBLEM),
             msg_seq_num,
@@ -120,16 +120,16 @@ pub(super) fn validate_msg_length(msg_buf: &[u8], msg_length: usize) -> Result<(
     Ok(())
 }
 
-fn valid_sending_time(sending_time: DateTime<Utc>, sending_time_threshold: Duration) -> bool {
-    Utc::now() - sending_time < sending_time_threshold
-        && sending_time - Utc::now() < sending_time_threshold
+fn valid_sending_time(sending_time: i64, sending_time_threshold: i64) -> bool {
+    let now = speedate::DateTime::now(0).unwrap().timestamp();
+    now - sending_time < sending_time_threshold && sending_time - now < sending_time_threshold
 }
 
 fn validate_duplicate(
     msg_seq_num: u32,
     msg_type: char,
-    sending_time: DateTime<Utc>,
-    orig_sending_time: Option<DateTime<Utc>>,
+    sending_time: i64,
+    orig_sending_time: Option<i64>,
 ) -> Result<(), SessionError> {
     if orig_sending_time.is_none() {
         return Err(SessionError::new_message_rejected(

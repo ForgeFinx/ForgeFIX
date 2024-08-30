@@ -118,8 +118,8 @@ struct SessionParserCallback<'a> {
     begin_seq_no: Option<u32>,
     end_seq_no: Option<u32>,
     heart_bt_int: Option<u32>,
-    sending_time: Option<DateTime<Utc>>,
-    orig_sending_time: Option<DateTime<Utc>>,
+    sending_time: Option<i64>,
+    orig_sending_time: Option<i64>,
     encrypt_method: Option<u32>,
     reset_seq_num_flag: Option<char>,
 }
@@ -139,10 +139,11 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
                 }
             }
             Ok(Tags::MsgSeqNum) => {
-                self.msg_seq_num =
-                    parse_field::<u32>(value).or(Err(SessionError::MissingMsgSeqNum {
+                self.msg_seq_num = parse_field::<u32>(value).or_else(|_| {
+                    Err(SessionError::MissingMsgSeqNum {
                         text: String::from("Missing MsgSeqNum"),
-                    }))?;
+                    })
+                })?;
             }
             Ok(Tags::TargetCompID) => {
                 self.target_comp_id = Some(value);
@@ -160,9 +161,9 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
                     ));
                 }
             }
-            Ok(Tags::SendingTime) => match parse_sending_time(value) {
+            Ok(Tags::SendingTime) => match speedate::DateTime::parse_bytes(value) {
                 Ok(sending_time) => {
-                    self.sending_time = Some(sending_time);
+                    self.sending_time = Some(sending_time.timestamp());
                 }
                 Err(_) => {
                     return Err(self.create_message_reject(
@@ -171,9 +172,9 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
                     ));
                 }
             },
-            Ok(Tags::OrigSendingTime) => match parse_sending_time(value) {
+            Ok(Tags::OrigSendingTime) => match speedate::DateTime::parse_bytes(value) {
                 Ok(sending_time) => {
-                    self.orig_sending_time = Some(sending_time);
+                    self.orig_sending_time = Some(sending_time.timestamp());
                 }
                 Err(_) => {
                     return Err(self.create_message_reject(

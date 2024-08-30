@@ -19,4 +19,5 @@ rusqlite = { version = "0.28.0", features = ["chrono"] }
 thiserror = "1.0.44"
 tokio = { version = "1.29.1", features = ["net", "macros", "rt", "rt-multi-thread", "io-util", "time", "fs"] }
 tokio-rusqlite = "0.3.0"
+speedate = { path = "/home/michael/projects/rust/speedate" }
 
