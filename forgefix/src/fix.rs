@@ -366,6 +366,11 @@ pub(super) async fn spin_session(
         let (timeout_fut, timeout_event) = next_timeout.timeout();
 
         tokio::select! {
+            biased;
+
+            Some(req) = request_receiver.recv() => {
+                handle_req(req, &mut state_machine, &mut recv_from_channel_times)
+            }
             maybe_err = stream::read_header(&mut stream, &mut header_buf) => {
                 let maybe_message = match maybe_err {
                     Ok(()) => stream::read_message(&mut stream, &mut header_buf, &mut logger).await,
@@ -392,9 +397,6 @@ pub(super) async fn spin_session(
                     &additional_headers,
                     &message_received_event_sender,
                 ).await?;
-            }
-            Some(req) = request_receiver.recv() => {
-                handle_req(req, &mut state_machine, &mut recv_from_channel_times);
             }
             _ = timeout_fut => {
                 state_machine.handle(timeout_event);
@@ -427,6 +429,7 @@ pub(super) async fn spin_session(
             to_tcp_stream_times[99]
         )
     );
+
     println!(
         "time from building message to receiving something on TCP: {:?}",
         (
