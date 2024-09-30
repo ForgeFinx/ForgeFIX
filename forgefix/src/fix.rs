@@ -3,8 +3,8 @@
 //! [encoding]: crate::fix::encode
 //! [decoding]: crate::fix::decode
 
-use chrono::{DateTime, Utc};
 use chrono::naive::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
@@ -17,13 +17,13 @@ use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
 use crate::fix::generated::{
     is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags,
 };
-use crate::fix::log::{Logger, FileLogger};
+use crate::fix::log::{FileLogger, Logger};
 use crate::fix::resend::Transformer;
 use crate::fix::session::{Event, MyStateMachine};
 use crate::fix::stopwatch::FixTimeouts;
 use crate::fix::store::Store;
 use crate::fix::validate::validate_msg;
-use crate::{FixEngineType, SessionSettings, Request};
+use crate::{FixEngineType, Request, SessionSettings};
 
 use generated::MsgType;
 use generated::MsgType::*;
@@ -31,7 +31,7 @@ use mem::MsgBuf;
 
 use std::io;
 use std::sync::Arc;
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 pub mod decode;
 pub mod encode;
@@ -125,7 +125,7 @@ struct SessionParserCallback<'a> {
 }
 
 impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
-    type Err = SessionError; 
+    type Err = SessionError;
     fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
         match key.try_into() {
             Ok(Tags::MsgType) => {
@@ -269,12 +269,10 @@ impl<'a> crate::fix::decode::ParserCallback<'a> for SessionParserCallback<'a> {
                     None,
                 ))
             }
-            decode::MessageParseError::UnexpectedByte(..) => {
-                Err(SessionError::GarbledMessage {
-                   text: "invalid character in message".to_string(),
-                   garbled_msg_type: GarbledMessageType::Other,
-               })
-            }
+            decode::MessageParseError::UnexpectedByte(..) => Err(SessionError::GarbledMessage {
+                text: "invalid character in message".to_string(),
+                garbled_msg_type: GarbledMessageType::Other,
+            }),
         }
     }
 }
@@ -296,7 +294,6 @@ pub(super) async fn spin_session(
     message_received_event_sender: mpsc::UnboundedSender<Arc<MsgBuf>>,
     settings: SessionSettings,
 ) -> Result<()> {
-
     // SETUP
 
     let additional_headers = AdditionalHeaders::build(&settings);
@@ -307,7 +304,7 @@ pub(super) async fn spin_session(
 
     let logon_resp_sender = receive_logon_request(&mut request_receiver).await;
 
-    let start_new_session = is_new_session(&store, &settings).await?; 
+    let start_new_session = is_new_session(&store, &settings).await?;
     match settings.engine_type {
         FixEngineType::Server => {
             state_machine.set_logon_resp_sender(logon_resp_sender);
@@ -325,7 +322,13 @@ pub(super) async fn spin_session(
     let logout_dur = logout_duration(heartbt_dur);
     let mut fix_timeouts = FixTimeouts::new(*heartbt_dur, tr_dur, logout_dur);
 
-    let mut header_buf: stream::HeaderBuf<{ stream::PEEK_LEN }> = stream::HeaderBuf::new(); 
+    let mut header_buf: stream::HeaderBuf<{ stream::PEEK_LEN }> = stream::HeaderBuf::new();
+
+    let mut recv_from_channel_times: Vec<Duration> = Vec::with_capacity(100);
+    let mut to_tcp_stream_times: Vec<Duration> = Vec::with_capacity(100);
+    let mut recv_times: Vec<Duration> = Vec::with_capacity(100);
+
+    let mut created_instants: Vec<Instant> = Vec::with_capacity(200);
 
     // LOOP
 
@@ -338,6 +341,8 @@ pub(super) async fn spin_session(
             Arc::clone(&epoch),
             &mut logger,
             &mut fix_timeouts,
+            &mut to_tcp_stream_times,
+            &mut created_instants,
         )
         .await?;
 
@@ -368,24 +373,28 @@ pub(super) async fn spin_session(
                     Err(e) => Err(e),
                 };
 
+                if recv_times.len() != 0 || created_instants.len() != 0 {
+                    recv_times.push(created_instants[recv_times.len()].elapsed());
+                }
+
                 if let Err(SessionError::IoError(e)) = maybe_message {
                     bail!("{e:?}");
                 }
 
                 handle_msg(
-                    maybe_message, 
-                    &mut state_machine, 
+                    maybe_message,
+                    &mut state_machine,
                     &mut fix_timeouts,
                     &store,
                     &settings,
-                    &mut stream, 
+                    &mut stream,
                     &mut logger,
                     &additional_headers,
                     &message_received_event_sender,
-                ).await?; 
+                ).await?;
             }
             Some(req) = request_receiver.recv() => {
-                handle_req(req, &mut state_machine);
+                handle_req(req, &mut state_machine, &mut recv_from_channel_times);
             }
             _ = timeout_fut => {
                 state_machine.handle(timeout_event);
@@ -393,6 +402,42 @@ pub(super) async fn spin_session(
             }
         };
     }
+
+    recv_from_channel_times.sort();
+    to_tcp_stream_times.sort();
+    recv_times.sort();
+
+    println!(
+        "time from building message to received by engine: {:?}",
+        (
+            recv_from_channel_times[0],
+            recv_from_channel_times[24],
+            recv_from_channel_times[49],
+            recv_from_channel_times[74],
+            recv_from_channel_times[99],
+        )
+    );
+    println!(
+        "time from building message to writing to TCP: {:?}",
+        (
+            to_tcp_stream_times[0],
+            to_tcp_stream_times[24],
+            to_tcp_stream_times[49],
+            to_tcp_stream_times[74],
+            to_tcp_stream_times[99]
+        )
+    );
+    println!(
+        "time from building message to receiving something on TCP: {:?}",
+        (
+            recv_times[0],
+            recv_times[24],
+            recv_times[49],
+            recv_times[74],
+            recv_times[99]
+        )
+    );
+
     Ok(())
 }
 
@@ -404,21 +449,25 @@ fn logout_duration(timeout_dur: &Duration) -> Duration {
     *timeout_dur * 2
 }
 
-fn handle_req(req: Request, state_machine: &mut MyStateMachine) {
+fn handle_req(
+    req: Request,
+    state_machine: &mut MyStateMachine,
+    recv_from_channel_times: &mut Vec<Duration>,
+) {
     match req {
         Request::SendMessage {
             resp_sender,
             builder,
         } => {
+            recv_from_channel_times.push(builder.created.elapsed());
             state_machine.outbox_push_with_sender(builder, resp_sender);
         }
         Request::Logout { resp_sender } => {
             let begin_string = Arc::clone(&state_machine.begin_string);
-            state_machine
-                .outbox_push_with_sender(
-                    crate::fix::session::build_logout_message(&begin_string), 
-                    resp_sender,
-                );
+            state_machine.outbox_push_with_sender(
+                crate::fix::session::build_logout_message(&begin_string),
+                resp_sender,
+            );
         }
         Request::Logon { resp_sender } => {
             let _ = resp_sender.send(true);
@@ -443,10 +492,10 @@ async fn handle_msg(
     let msg = match maybe_msg {
         Ok(b) => Arc::new(b),
         Err(error) => {
-            state_machine.handle(&Event::SessionErrorReceived { error }); 
+            state_machine.handle(&Event::SessionErrorReceived { error });
             return Ok(());
         }
-    }; 
+    };
 
     // PARSE
 
@@ -460,7 +509,7 @@ async fn handle_msg(
     // VALIDATE
 
     if let Err(error) = validate_msg(
-        settings.expected_sender_comp_id(), 
+        settings.expected_sender_comp_id(),
         settings.expected_target_comp_id(),
         cb.msg_type,
         cb.msg_seq_num,
@@ -484,7 +533,7 @@ async fn handle_msg(
     // HANDLE
 
     let msg_seq_num = cb.msg_seq_num;
-    let maybe_msg_type = cb.msg_type.try_into(); 
+    let maybe_msg_type = cb.msg_type.try_into();
 
     match maybe_msg_type {
         Ok(LOGON) => {
@@ -533,12 +582,10 @@ async fn handle_msg(
                 })
             }
         }
-        Ok(REJECT) => {
-            state_machine.handle(&Event::RejectReceived(
-                msg_seq_num,
-                to_poss_dup_flag(cb.poss_dup_flag),
-            ))
-        }
+        Ok(REJECT) => state_machine.handle(&Event::RejectReceived(
+            msg_seq_num,
+            to_poss_dup_flag(cb.poss_dup_flag),
+        )),
         Ok(TEST_REQUEST) => {
             if let Some(test_req_id) = cb.test_req_id {
                 state_machine.handle(&Event::TestRequestReceived {
@@ -601,7 +648,7 @@ async fn disconnect(
     epoch: Arc<String>,
     state_machine: &MyStateMachine,
     stream: TcpStream,
-    mut logger: FileLogger, 
+    mut logger: FileLogger,
 ) -> Result<()> {
     request_receiver.close();
     store
@@ -646,6 +693,8 @@ async fn send_outgoing_messages(
     epoch: Arc<String>,
     logger: &mut impl Logger,
     fix_timeouts: &mut FixTimeouts,
+    to_tcp_stream_times: &mut Vec<Duration>,
+    created_instants: &mut Vec<Instant>,
 ) -> Result<(), SessionError> {
     if !state_machine.outbox.is_empty() {
         fix_timeouts.reset_heartbeat();
@@ -653,12 +702,20 @@ async fn send_outgoing_messages(
     while let Some((msg, maybe_resp_sender)) = state_machine.outbox_pop() {
         let is_logout = msg.msg_type() == MsgType::LOGOUT.into();
 
+        let created = msg.created;
         let msg_seq_num = state_machine.sequences.next_outgoing();
         let msg_buf = build_message_with_headers(msg, msg_seq_num, additional_headers).await?;
         stream::send_message(&msg_buf, stream, logger).await?;
+        to_tcp_stream_times.push(created.elapsed());
+        created_instants.push(created);
 
         store
-            .store_outgoing(epoch.clone(), msg_seq_num, Instant::now(), Arc::new(msg_buf))
+            .store_outgoing(
+                epoch.clone(),
+                msg_seq_num,
+                Instant::now(),
+                Arc::new(msg_buf),
+            )
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
         if is_logout {
@@ -763,7 +820,7 @@ async fn is_new_session(store: &Store, settings: &SessionSettings) -> Result<boo
         return Ok(false);
     }
     let last_send_time = store.last_send_time(settings.epoch.clone()).await?;
-    let start_time = NaiveDateTime::new(Utc::now().date_naive(), settings.start_time).and_utc(); 
+    let start_time = NaiveDateTime::new(Utc::now().date_naive(), settings.start_time).and_utc();
     Ok(last_send_time < Some(start_time))
 }
 
