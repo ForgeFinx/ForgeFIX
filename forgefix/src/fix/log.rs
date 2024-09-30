@@ -1,15 +1,15 @@
-use crate::SessionSettings;
 use crate::fix::mem::MsgBuf;
 use crate::fix::SessionError;
+use crate::SessionSettings;
 
-use chrono::offset::{Local};
-use chrono::{Duration, DateTime};
+use chrono::offset::Local;
+use chrono::{DateTime, Duration};
 
 use tokio::fs::{File, OpenOptions};
-use tokio::io::{AsyncWriteExt};
-use tokio::sync::{oneshot, mpsc}; 
+use tokio::io::AsyncWriteExt;
+use tokio::sync::{mpsc, oneshot};
 
-use std::time::Instant; 
+use std::time::Instant;
 
 use anyhow::Result;
 
@@ -30,12 +30,11 @@ pub(super) trait Logger {
 
 impl Logger for FileLogger {
     fn log_message(&mut self, buf: &MsgBuf) -> Result<(), SessionError> {
-        let req = LoggerRequest::Log(format!("{}", buf), Instant::now()); 
+        let req = LoggerRequest::Log(format!("{}", buf), Instant::now());
         self.sender.send(req).map_err(to_io_err)?;
         Ok(())
     }
 }
-
 
 impl FileLogger {
     pub(super) async fn build(settings: &SessionSettings) -> Result<FileLogger> {
@@ -49,11 +48,11 @@ impl FileLogger {
             .open(
                 log_path
                     .join(format!("{}-{}", sendercompid, targetcompid))
-                    .with_extension(LOG_FILE_TYPE)
+                    .with_extension(LOG_FILE_TYPE),
             )
             .await?;
 
-        let (sender, mut receiver) = mpsc::unbounded_channel(); 
+        let (sender, mut receiver) = mpsc::unbounded_channel();
 
         tokio::spawn(async move {
             let begin_time = Local::now();
@@ -61,10 +60,11 @@ impl FileLogger {
             while let Some(req) = receiver.recv().await {
                 match req {
                     LoggerRequest::Log(msg, instant) => {
-                        let send_time = match Duration::from_std(instant.duration_since(begin_instant)) {
-                            Ok(d) => begin_time + d,
-                            Err(_) => Local::now(),
-                        };
+                        let send_time =
+                            match Duration::from_std(instant.duration_since(begin_instant)) {
+                                Ok(d) => begin_time + d,
+                                Err(_) => Local::now(),
+                            };
                         if let Err(e) = log_message(&mut logs, msg, send_time).await {
                             eprintln!("error logging message: {e:?}")
                         }
@@ -75,7 +75,7 @@ impl FileLogger {
                     }
                 }
             }
-        }); 
+        });
 
         Ok(FileLogger { sender })
     }
@@ -88,9 +88,12 @@ impl FileLogger {
     }
 }
 
-async fn log_message(logs: &mut File, buf: String, time: DateTime<Local>) -> Result<(), SessionError> {
-    logs
-        .write_all(format!("{} : {}\n", message_stamp(time), buf).as_bytes())
+async fn log_message(
+    logs: &mut File,
+    buf: String,
+    time: DateTime<Local>,
+) -> Result<(), SessionError> {
+    logs.write_all(format!("{} : {}\n", message_stamp(time), buf).as_bytes())
         .await?;
     logs.flush().await?;
     Ok(())
@@ -101,15 +104,13 @@ async fn disconnect(logs: &mut File) -> Result<(), SessionError> {
     Ok(())
 }
 
-
 fn message_stamp(time: DateTime<Local>) -> String {
-    time
-        .format("%Y%m%d-%H:%M:%S%.9f")
-        .to_string()
+    time.format("%Y%m%d-%H:%M:%S%.9f").to_string()
 }
 
-fn to_io_err<E>(e: E) -> std::io::Error 
-where E: Into<Box<dyn std::error::Error + Send + Sync>>
+fn to_io_err<E>(e: E) -> std::io::Error
+where
+    E: Into<Box<dyn std::error::Error + Send + Sync>>,
 {
     std::io::Error::new(std::io::ErrorKind::Other, e)
 }

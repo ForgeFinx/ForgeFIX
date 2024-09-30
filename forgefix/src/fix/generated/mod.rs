@@ -1,4 +1,4 @@
-//! FIX [`Tags`], [`MsgType`], and values. 
+//! FIX [`Tags`], [`MsgType`], and values.
 
 mod fields;
 pub use fields::*;

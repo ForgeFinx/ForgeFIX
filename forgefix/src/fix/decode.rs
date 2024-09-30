@@ -3,7 +3,7 @@
 //! This module provides tools for decoding information from an array of bytes representing a FIX
 //! message. One of the design choices of ForgeFIX was for message parsing to occur on-demend
 //! instead of automatically. This way, only when necessary are messages decoded, and only what is
-//! necessary will be parsed from the message. 
+//! necessary will be parsed from the message.
 //!
 //! # Terminalogy
 //! * `message` - An entire FIX message, which is represented as an array of bytes in a [`MsgBuf`].
@@ -17,39 +17,39 @@
 //!
 //! * `tags` --  A tag is on the left side of the `=` and describes what kind of information the value
 //! represents. All valid FIX tags can be found in the [FIX dictionary], and are represented in the
-//! [`Tags`] enum. 
+//! [`Tags`] enum.
 //!
 //! * `values` -- A value is on the right side of the `=` and contains the actual information for the
 //! field. FIX values are Utf8 encoded and have one of the following types: int, float, String,
 //! char or data (see [FIX dictionary] for more info). Furthermore, for some fields, only a subset
 //! of values for the type are considered valid. These are called value sets for that field. All
-//! value sets are represented by enums in the [generated] module. 
+//! value sets are represented by enums in the [generated] module.
 //!
 //! * `SOH` -- The character that delimits the fields in a message. An SOH is represented with ascii
 //! code 1. For displaying, a `|` is often used to show an SOH. In rust, an SOH is represented as a
-//! byte: `b'\x01'`. 
+//! byte: `b'\x01'`.
 //!
 //! # Decoding
 //!
 //! Parsing of messages is done with the [`parse`] function which depends on a user defined
 //! [`ParserCallback`]. The parse function splits a message into fields, and then tag/value pairs.
-//! These pairs are sent to the callback, where the user defines which to parse. 
+//! These pairs are sent to the callback, where the user defines which to parse.
 //!
-//! The [`Tags`] enum and [`parse_field`] function are tools to support parsing of tags and values. 
+//! The [`Tags`] enum and [`parse_field`] function are tools to support parsing of tags and values.
 //!
 //! # Errors
 //!
-//! If a message is malformed or contains invalid data, then decoding the message will likely cause an error. 
+//! If a message is malformed or contains invalid data, then decoding the message will likely cause an error.
 //! The FIX specification recommends being fault tolerant when processing application level
-//! messages. ForgeFIX follows this recommendation which is reflected in the decode error types. 
+//! messages. ForgeFIX follows this recommendation which is reflected in the decode error types.
 //!
 //! [`MessageParseError`]: errors that occur when a message fails to meet the FIX spec for message
 //! structure, and the [`parse`] function is not able to split the message into its fields. This
-//! error will always be tripped if any part of the message is malformed. 
+//! error will always be tripped if any part of the message is malformed.
 //!
-//! [`DecodeError`]: errors for invalid tags and values. A tag can be invalid if it is not a known tag number. 
-//! A value can be invalid because it: is invalid UTF-8, cannot be parsed into a rust type, or does not exist in 
-//! a value set. This error will only occur when a user attempts to parse an invalid tag or value. 
+//! [`DecodeError`]: errors for invalid tags and values. A tag can be invalid if it is not a known tag number.
+//! A value can be invalid because it: is invalid UTF-8, cannot be parsed into a rust type, or does not exist in
+//! a value set. This error will only occur when a user attempts to parse an invalid tag or value.
 //!
 //! [`MsgBuf`]: crate::fix::mem::MsgBuf
 //! [FIX dictionary]: https://btobits.com/fixopaedia/fixdic42/index.html
@@ -59,8 +59,8 @@
 //! # Example
 //!
 //! ```no_run
-//! use anyhow::{Error, bail, Result}; 
-//! use forgefix::fix::decode::{ParserCallback, parse_field, parse, MessageParseError}; 
+//! use anyhow::{Error, bail, Result};
+//! use forgefix::fix::decode::{ParserCallback, parse_field, parse, MessageParseError};
 //! use forgefix::fix::generated::{Tags, MsgType, ExecType, OrdStatus};
 //!
 //! #[derive(Debug)]
@@ -83,12 +83,12 @@
 //! }
 //!
 //! impl<'a> ParserCallback<'a> for ExecutionReportParser<'a> {
-//!     type Err = Error; 
+//!     type Err = Error;
 //!
 //!     // parse and save any header fields...
 //!     fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
 //!         if let Ok(Tags::MsgType) = key.try_into() {
-//!             let msg_type = parse_field::<char>(value)?.try_into()?; 
+//!             let msg_type = parse_field::<char>(value)?.try_into()?;
 //!             if !matches!(msg_type, MsgType::EXECUTION_REPORT) {
 //!                 bail!("not an execution report message");
 //!             }
@@ -99,14 +99,14 @@
 //!     // parse and save any body fields...
 //!     fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
 //!         match key.try_into() {
-//!             Ok(Tags::OrderID) => self.order_id = std::str::from_utf8(value)?, 
+//!             Ok(Tags::OrderID) => self.order_id = std::str::from_utf8(value)?,
 //!             Ok(Tags::OrdStatus) => {
 //!                 self.order_status = parse_field::<char>(value)?.try_into()?;
 //!             }
 //!             Ok(Tags::ExecType) => {
 //!                 self.exec_type = parse_field::<char>(value)?.try_into()?;
 //!             }
-//!             Ok(Tags::CumQty) => self.qty_filled = parse_field::<f32>(value)?, 
+//!             Ok(Tags::CumQty) => self.qty_filled = parse_field::<f32>(value)?,
 //!             _ => {}
 //!         }
 //!         Ok(true)
@@ -123,10 +123,10 @@
 //!     }
 //! }
 //!
-//! # use forgefix::{SessionSettings, FixApplicationInitiator}; 
+//! # use forgefix::{SessionSettings, FixApplicationInitiator};
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
-//! 
+//!
 //!     // create SessionSettings...
 //!
 //! #    let settings = SessionSettings::builder()
@@ -135,20 +135,20 @@
 //! #        .with_store_path("./store".into())
 //! #        .with_log_dir("./log".into())
 //! #        .with_socket_addr("127.0.0.1:0".parse().unwrap())
-//! #        .build()?; 
+//! #        .build()?;
 //!     let (handle, mut receiver) = FixApplicationInitiator::build(settings)?
 //!         .initiate()
 //!         .await?;
 //!
 //!     tokio::spawn(async move {
 //!         while let Some(msg) = receiver.recv().await {
-//!             let mut callback: ExecutionReportParser = Default::default(); 
+//!             let mut callback: ExecutionReportParser = Default::default();
 //!             match parse(&msg[..], &mut callback) {
 //!                 Ok(()) => println!("Received execution report: {:?}", callback),
 //!                 Err(e) => println!("Error parsing execution report: {:?}", e),
 //!             }
 //!         }
-//!     }); 
+//!     });
 //!
 //!     // run application ...
 //!     # Ok(())
@@ -180,31 +180,31 @@ lazy_static! {
 /// Errors that can occur while splitting a message into fields.
 #[derive(Error, Debug)]
 pub enum MessageParseError {
-    /// The message contained an unexpected byte. 
+    /// The message contained an unexpected byte.
     ///
     /// The [`usize`] is the index of the unexpected byte, and the [`Vec<u8>`] will contain the
-    /// entire message. 
+    /// entire message.
     #[error("the value at index {0:?} was unexpected in message {1:?}")]
-    UnexpectedByte(usize, Vec<u8>), 
-    /// A length field's value could not be parsed. 
+    UnexpectedByte(usize, Vec<u8>),
+    /// A length field's value could not be parsed.
     ///
     /// The [`u32`] will be the length tag, and the [`Vec<u8>`] will contain its value that could
-    /// not be parsed. 
+    /// not be parsed.
     #[error("could not parse value {1:?} of length field {0:?}")]
-    BadLengthField(u32, Vec<u8>), 
+    BadLengthField(u32, Vec<u8>),
 }
 
-/// Errors that can occur while decoding a FIX message. 
+/// Errors that can occur while decoding a FIX message.
 #[derive(Error, Debug)]
 pub enum DecodeError {
-    /// The Message could not be parsed into fields 
+    /// The Message could not be parsed into fields
     #[error("Message could not be parsed into fields: {0:?}")]
     BadMessage(#[from] MessageParseError),
     /// A field contained an unknown tag
     ///
     /// The [`u32`] contains the tag value
     #[error("{0:?} does not match a known Tag")]
-    UnknownTag(u32), 
+    UnknownTag(u32),
     /// A field contained invalid utf8
     #[error("FIX message contained invalid utf8: {0:?}")]
     Utf8Error(#[from] std::str::Utf8Error),
@@ -220,11 +220,11 @@ pub enum DecodeError {
     UnknownChar(Tags, char),
     /// A int field did not match any known variant of a tag
     ///
-    /// The attempted [`Tags`] and [`u8`] are contained in the error 
+    /// The attempted [`Tags`] and [`u8`] are contained in the error
     #[error("int {1:?} does not match a known variant of {0:?}")]
     UnknownInt(Tags, u8),
 }
-    
+
 #[derive(PartialEq, Eq, Debug)]
 enum FieldState {
     Start,
@@ -238,19 +238,19 @@ struct FieldIter<'a> {
     msg: &'a [u8],
     state: FieldState,
     field_start: usize,
-    tag_accum: u32, 
+    tag_accum: u32,
     field_lengths: HashMap<u32, u32>,
 }
 
 impl<'a> FieldIter<'a> {
     fn new(msg: &'a [u8]) -> Self {
         FieldIter {
-            inner: msg.iter().enumerate(), 
+            inner: msg.iter().enumerate(),
             msg,
             state: FieldState::Start,
             field_start: 0,
             tag_accum: 0,
-            field_lengths: HashMap::new(), 
+            field_lengths: HashMap::new(),
         }
     }
 
@@ -262,19 +262,19 @@ impl<'a> FieldIter<'a> {
 }
 
 impl<'a> Iterator for FieldIter<'a> {
-    type Item = Result<(u32, &'a [u8]), MessageParseError>; 
+    type Item = Result<(u32, &'a [u8]), MessageParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some((i, b)) = self.inner.next() {
-            let c = *b as char; 
+            let c = *b as char;
             match (&self.state, c) {
                 (&FieldState::Start, '0'..='9') | (&FieldState::InTag, '0'..='9') => {
                     if self.state == FieldState::Start {
                         self.tag_accum = 0;
                     } else {
-                        self.tag_accum *= 10; 
+                        self.tag_accum *= 10;
                     }
-                    self.tag_accum += *b as u32 - '0' as u32; 
+                    self.tag_accum += *b as u32 - '0' as u32;
                     self.state = FieldState::InTag;
                 }
                 (&FieldState::InTag, '=') => {
@@ -282,17 +282,17 @@ impl<'a> Iterator for FieldIter<'a> {
                     if let Some(len) = self.field_lengths.get(&self.tag_accum) {
                         self.skip_ahead(len - 1);
                     }
-                    self.state = FieldState::SeenEquals; 
+                    self.state = FieldState::SeenEquals;
                 }
                 (&FieldState::SeenEquals, '\x01') | (&FieldState::InField, '\x01') => {
-                    let curr_value = &self.msg[self.field_start..i]; 
+                    let curr_value = &self.msg[self.field_start..i];
                     if let Some(tag) = get_data_ref(self.tag_accum) {
                         match bytes_to_u32(curr_value) {
                             Some(val) => {
                                 self.field_lengths.insert(tag, val);
                             }
                             None => {
-                                self.state = FieldState::Error; 
+                                self.state = FieldState::Error;
                                 return Some(Err(MessageParseError::BadLengthField(
                                     self.tag_accum,
                                     curr_value.to_vec(),
@@ -300,14 +300,14 @@ impl<'a> Iterator for FieldIter<'a> {
                             }
                         }
                     }
-                    self.state = FieldState::Start; 
-                    return Some(Ok((self.tag_accum, &self.msg[self.field_start..i]))); 
+                    self.state = FieldState::Start;
+                    return Some(Ok((self.tag_accum, &self.msg[self.field_start..i])));
                 }
-                (&FieldState::SeenEquals, _) => self.state = FieldState::InField, 
+                (&FieldState::SeenEquals, _) => self.state = FieldState::InField,
                 (&FieldState::InField, _) => {}
                 (&FieldState::Error, _) => return None,
                 _ => {
-                    self.state = FieldState::Error; 
+                    self.state = FieldState::Error;
                     return Some(Err(MessageParseError::UnexpectedByte(i, self.msg.to_vec())));
                 }
             }
@@ -319,23 +319,23 @@ impl<'a> Iterator for FieldIter<'a> {
 /// A trait that defines parsing of tag/values in a [`MsgBuf`], and is required to call the [`parse`]
 /// function.
 ///
-/// The `ParserCallback` defines methods that get called for certain parsing events. 
+/// The `ParserCallback` defines methods that get called for certain parsing events.
 ///
 /// ## Events
 ///
-/// * Header field found -- the [`header`] function is called 
-/// * Body field found -- the [`body`] function is called 
-/// * Trailer field found -- the [`trailer`] function is called 
-/// * A [`MessageParseError`] occurs -- the [`parse_error`] function is called 
+/// * Header field found -- the [`header`] function is called
+/// * Body field found -- the [`body`] function is called
+/// * Trailer field found -- the [`trailer`] function is called
+/// * A [`MessageParseError`] occurs -- the [`parse_error`] function is called
 ///
 /// To see which fields are headers or trailers, see [FIX dictionary]. All other fields are
-/// considered body fields. 
+/// considered body fields.
 ///
-/// ## Return Values 
+/// ## Return Values
 ///
 /// * [`header`], [`body`] and [`trailer`] -- Return `Ok(true)` to signal that parsing should
 /// continue. Return `Ok(false)` to signal that parsing should end. Return `Err` if an error
-/// occured that should cause parsing to stop. 
+/// occured that should cause parsing to stop.
 ///
 /// * [`parse_error`] -- Convert the [`MessageParseError`] into a `Result<(), Self::Err>`
 ///
@@ -346,26 +346,26 @@ impl<'a> Iterator for FieldIter<'a> {
 /// [`trailer`]: ParserCallback::trailer
 /// [`parse_error`]: ParserCallback::parse_error
 pub trait ParserCallback<'a> {
-    type Err; 
+    type Err;
 
     /// Called for any fields in message that are header fields.
     fn header(&mut self, key: u32, value: &'a [u8]) -> result::Result<bool, Self::Err>;
-    
-    /// Called for any fields in message that are body fields 
+
+    /// Called for any fields in message that are body fields
     fn body(&mut self, key: u32, value: &'a [u8]) -> result::Result<bool, Self::Err>;
 
-    /// Called for any fields in message that are trailer fields 
+    /// Called for any fields in message that are trailer fields
     fn trailer(&mut self, key: u32, value: &'a [u8]) -> result::Result<bool, Self::Err>;
 
     /// Called if a [`MessageParseError`] occurs
-    fn parse_error(&mut self, err: MessageParseError) -> result::Result<(), Self::Err>; 
+    fn parse_error(&mut self, err: MessageParseError) -> result::Result<(), Self::Err>;
 }
 
 /// A default implementation of [`ParserCallback`]
 pub struct NullParserCallback;
 
 impl<'a> ParserCallback<'a> for NullParserCallback {
-    type Err = DecodeError; 
+    type Err = DecodeError;
     fn header(&mut self, _key: u32, _value: &'a [u8]) -> Result<bool, DecodeError> {
         Ok(true)
     }
@@ -386,40 +386,38 @@ impl<'a> ParserCallback<'a> for NullParserCallback {
 ///
 /// # Notes
 ///
-/// The `parse` function iterates over each field and splits each field into a tag/value pair. Then, 
-/// each tag/value pair is passed to the `callback`'s methods. 
+/// The `parse` function iterates over each field and splits each field into a tag/value pair. Then,
+/// each tag/value pair is passed to the `callback`'s methods.
 ///
 /// In the event that splitting a message into fields causes a [`MessageParseError`], the created
 /// error will be passed to the callback.
 ///
 /// [`parse`] will return early with `Ok(())` if at any point the callback returns `Ok(false)`.
-/// `Ok(())` will also be returned once all the fields have been iterated over. 
+/// `Ok(())` will also be returned once all the fields have been iterated over.
 ///
 /// # Errors
 ///
-/// If at any point the `callback` return an `Err`, [`parse`] will end and return the err. 
+/// If at any point the `callback` return an `Err`, [`parse`] will end and return the err.
 ///
 /// If at any point a [`MessageParseError`] occurs,
-/// `parse` will call [`ParserCallback::parse_error`] and return its result. 
+/// `parse` will call [`ParserCallback::parse_error`] and return its result.
 pub fn parse<'a, T: ParserCallback<'a>>(
     msg: &'a [u8],
     callbacks: &mut T,
-) -> result::Result<(), T::Err> 
-{
-    let field_iter = FieldIter::new(msg); 
+) -> result::Result<(), T::Err> {
+    let field_iter = FieldIter::new(msg);
     for res in field_iter {
         let (tag, val) = match res {
             Ok((t, v)) => (t, v),
             Err(e) => return callbacks.parse_error(e),
         };
-        let cont =
-            if HEADER_FIELDS.contains(&tag) {
-                callbacks.header(tag, val)?
-            } else if TRAILER_FIELDS.contains(&tag) {
-                callbacks.trailer(tag, val)?
-            } else {
-                callbacks.body(tag, val)?
-            };
+        let cont = if HEADER_FIELDS.contains(&tag) {
+            callbacks.header(tag, val)?
+        } else if TRAILER_FIELDS.contains(&tag) {
+            callbacks.trailer(tag, val)?
+        } else {
+            callbacks.body(tag, val)?
+        };
         if !cont {
             break;
         }
@@ -447,9 +445,9 @@ fn bytes_to_u32(bytes: &[u8]) -> Option<u32> {
 }
 
 pub(super) fn parse_header(header: &[u8]) -> Result<usize, SessionError> {
-    let prefix = parse_peeked_prefix(header)?; 
-    // body_length does not account for the 7 byte checksum (10=xxx|) 
-    // and len_end is 1 less that we would like 
+    let prefix = parse_peeked_prefix(header)?;
+    // body_length does not account for the 7 byte checksum (10=xxx|)
+    // and len_end is 1 less that we would like
     Ok(prefix.body_length - (header.len() - (prefix.len_end + 1)) + 7)
 }
 
@@ -539,8 +537,8 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
 ///
 /// # Primitives
 ///
-/// Rust primitives generally `impl` [`FromStr`]. And most FIX data type can be represented by rust primitives. Consider 
-/// using the following for each FIX type: 
+/// Rust primitives generally `impl` [`FromStr`]. And most FIX data type can be represented by rust primitives. Consider
+/// using the following for each FIX type:
 /// * `int` -- [`i32`], [`u32`]
 /// * `float` -- [`f32`]
 /// * `char` -- [`char`]
@@ -550,16 +548,16 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
 /// *[`&str`] does not itself `impl` [`FromStr`], so just use [`from_utf8`]. Since [`DecodeError`]
 /// `impl`'s [`From<std::str::Utf8Error>`], the result can easily be converted
 ///
-/// # Tags 
+/// # Tags
 ///
 /// FIX tags are automatically converted into a [`u32`]. The [`Tags`] enum `impl`'s
-/// [`TryFrom<u32>`]. 
+/// [`TryFrom<u32>`].
 ///
-/// # Value Sets 
+/// # Value Sets
 ///
 /// All FIX value sets are implemented as enums in the `generated` module. To convert a value into
 /// its enum, first convert to the corresponding primitive ([`char`] or [`u8`]). And then
-/// all enums `impl` [`TryFrom`] for either [`char`] or [`u8`]. 
+/// all enums `impl` [`TryFrom`] for either [`char`] or [`u8`].
 ///
 ///
 /// [`FromStr`]: std::str::FromStr
@@ -569,43 +567,44 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
 /// # Example
 ///
 /// ```rust
-/// # use forgefix::fix::generated::{EncryptMethod, OrdStatus, MsgType}; 
+/// # use forgefix::fix::generated::{EncryptMethod, OrdStatus, MsgType};
 /// # use forgefix::fix::decode::parse_field;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///
 ///     // MsgType is specified as a char and has a value set
-///     let msg_type_field = b"A"; 
-///     let msg_type: MsgType = parse_field::<char>(msg_type_field)?.try_into()?; 
-///     assert_eq!(msg_type, MsgType::LOGON); 
+///     let msg_type_field = b"A";
+///     let msg_type: MsgType = parse_field::<char>(msg_type_field)?.try_into()?;
+///     assert_eq!(msg_type, MsgType::LOGON);
 ///
 ///     // Prices are floats, so parse into an f32
-///     let price_field = b"1.13"; 
-///     let price = parse_field::<f32>(price_field)?; 
-///     assert_eq!(price, 1.13f32); 
+///     let price_field = b"1.13";
+///     let price = parse_field::<f32>(price_field)?;
+///     assert_eq!(price, 1.13f32);
 ///
-///     // OrdStatus is also specified as a char and has a value set 
-///     let ord_status_field = b"0"; 
+///     // OrdStatus is also specified as a char and has a value set
+///     let ord_status_field = b"0";
 ///     let ord_status: OrdStatus = parse_field::<char>(ord_status_field)?.try_into()?;
-///     assert_eq!(ord_status, OrdStatus::NEW); 
+///     assert_eq!(ord_status, OrdStatus::NEW);
 ///
 ///     // To parse into a &str, just use std::str::from_utf8
-///     let order_id_field = b"abc123"; 
-///     let order_id: &str = std::str::from_utf8(order_id_field)?; 
-///     assert_eq!(order_id, "abc123"); 
+///     let order_id_field = b"abc123";
+///     let order_id: &str = std::str::from_utf8(order_id_field)?;
+///     assert_eq!(order_id, "abc123");
 ///
 ///     // EncryptMethod is specified as an int and has a value set
-///     let encrypt_method_field = b"0"; 
-///     let encrypt_method: EncryptMethod  = parse_field::<u8>(encrypt_method_field)?.try_into()?; 
+///     let encrypt_method_field = b"0";
+///     let encrypt_method: EncryptMethod  = parse_field::<u8>(encrypt_method_field)?.try_into()?;
 ///     assert_eq!(encrypt_method, EncryptMethod::NONE);
 ///     # Ok(())
 /// # }
 /// ```
-pub fn parse_field<T>(field: &[u8]) -> Result<T, DecodeError> 
+pub fn parse_field<T>(field: &[u8]) -> Result<T, DecodeError>
 where
     T: std::str::FromStr,
-    <T as std::str::FromStr>::Err: std::fmt::Debug
+    <T as std::str::FromStr>::Err: std::fmt::Debug,
 {
-    std::str::from_utf8(field)?.parse::<T>()
+    std::str::from_utf8(field)?
+        .parse::<T>()
         .map_err(|_| DecodeError::BadValue(field.to_vec()))
 }
 
@@ -613,7 +612,7 @@ pub(super) fn parse_sending_time(sending_time_bytes: &[u8]) -> Result<DateTime<U
     let sending_time_str = std::str::from_utf8(sending_time_bytes)?;
     let sending_time = NaiveDateTime::parse_from_str(sending_time_str, TIME_FORMAT_SHORT)
         .or_else(|_| NaiveDateTime::parse_from_str(sending_time_str, TIME_FORMAT_LONG))
-        .map_err(|_| DecodeError::BadValue(sending_time_bytes.to_vec()))?; 
+        .map_err(|_| DecodeError::BadValue(sending_time_bytes.to_vec()))?;
     Ok(sending_time.and_utc())
 }
 
@@ -648,19 +647,29 @@ mod test {
         ];
 
         let expected: Vec<Vec<Result<(u32, &[u8]), ()>>> = vec![
-            vec![Ok((8, b"FIX.4.2")), Ok((9, b"44")), Ok((8, b"A")), Ok((10, b"123"))],
+            vec![
+                Ok((8, b"FIX.4.2")),
+                Ok((9, b"44")),
+                Ok((8, b"A")),
+                Ok((10, b"123")),
+            ],
             vec![Err(())],
-            vec![Ok((93, b"6")), Ok((8, b"A")), Ok((89, b"12\x01456")), Ok((10, b"123"))],
+            vec![
+                Ok((93, b"6")),
+                Ok((8, b"A")),
+                Ok((89, b"12\x01456")),
+                Ok((10, b"123")),
+            ],
             vec![Err(())],
         ];
 
         for (msg, ex) in messages.iter().zip(expected.iter()) {
-            let field_iter = FieldIter::new(&msg[..]); 
+            let field_iter = FieldIter::new(&msg[..]);
             for (got, exp) in field_iter.zip(ex.iter()) {
                 if exp.is_err() {
                     assert!(got.is_err(), "Expected error");
                 } else {
-                    assert_eq!(got.unwrap(), *exp.as_ref().unwrap()); 
+                    assert_eq!(got.unwrap(), *exp.as_ref().unwrap());
                 }
             }
         }
