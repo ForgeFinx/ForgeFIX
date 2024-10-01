@@ -330,6 +330,12 @@ pub(super) async fn spin_session(
     let mut recv_times: Vec<Duration> = Vec::with_capacity(200);
     let mut times_to_outbox: Vec<Duration> = Vec::with_capacity(200);
 
+    let mut req_to_recv: Vec<Duration> = Vec::with_capacity(200);
+    let mut select_to_recv: Vec<Duration> = Vec::with_capacity(200);
+
+    let mut incoming_times: Vec<Duration> = Vec::with_capacity(200);
+    let mut try_read_times: Vec<Duration> = Vec::with_capacity(200);
+
     let mut created_instants: Vec<Instant> = Vec::with_capacity(200);
 
     // LOOP
@@ -365,16 +371,27 @@ pub(super) async fn spin_session(
             break;
         }
 
-        let next_timeout = fix_timeouts.next_expiring_timeout();
-        let (timeout_fut, timeout_event) = next_timeout.timeout();
-
-        tokio::select! {
-            biased;
-
-            Some(req) = request_receiver.recv() => {
-                handle_req(req, &mut state_machine, &mut recv_from_channel_times)
+        let select_start = Instant::now();
+        loop {
+            if let Ok(req) = request_receiver.try_recv() {
+                if let Request::SendMessage { sent, .. } = req {
+                    req_to_recv.push(sent.elapsed());
+                    select_to_recv.push(sent.elapsed());
+                }
+                handle_req(req, &mut state_machine, &mut recv_from_channel_times);
+                break;
             }
-            maybe_err = stream::read_header(&mut stream, &mut header_buf) => {
+
+            let mut byte: [u8; 1] = [0; 1];
+            let try_read_start = Instant::now();
+            if let Ok(n) = stream.try_read(&mut byte[..]) {
+                try_read_times.push(try_read_start.elapsed());
+                if recv_times.len() != 0 || created_instants.len() != 0 {
+                    incoming_times.push(created_instants[incoming_times.len()].elapsed());
+                }
+
+                let _ = stream::read_header(&mut &byte[..], &mut header_buf).await;
+                let maybe_err = stream::read_header(&mut stream, &mut header_buf).await;
                 let maybe_message = match maybe_err {
                     Ok(()) => stream::read_message(&mut stream, &mut header_buf, &mut logger).await,
                     Err(SessionError::IoError(e)) => bail!("{e:?}"),
@@ -399,19 +416,30 @@ pub(super) async fn spin_session(
                     &mut logger,
                     &additional_headers,
                     &mut message_received_event_sender,
-                ).await?;
+                )
+                .await?;
+                break;
             }
-            _ = timeout_fut => {
-                state_machine.handle(timeout_event);
+
+            let next_timeout = fix_timeouts.next_expiring_timeout();
+            if tokio::time::Instant::now() > next_timeout.next_instant {
+                state_machine.handle(&next_timeout.event);
                 next_timeout.reset_timeout();
+                break;
             }
-        };
+
+            //std::hint::spin_loop();
+        }
     }
 
     recv_from_channel_times.sort();
     to_tcp_stream_times.sort();
     recv_times.sort();
     times_to_outbox.sort();
+    req_to_recv.sort();
+    select_to_recv.sort();
+    incoming_times.sort();
+    try_read_times.sort();
 
     fn stats<T>(v: &Vec<T>) -> (&T, &T, &T) {
         (&v[24], &v[49], &v[74])
@@ -431,8 +459,26 @@ pub(super) async fn spin_session(
     );
 
     println!(
+        "time from building message to first byte coming in on TCP: {:?}",
+        stats(&incoming_times),
+    );
+    println!(
+        "time took to try_read from TCP stream: {:?}",
+        stats(&try_read_times),
+    );
+
+    println!(
         "time from building message to receiving something on TCP: {:?}",
         stats(&recv_times),
+    );
+
+    println!(
+        "\ntime from Request creation to recieved: {:?}",
+        stats(&req_to_recv)
+    );
+    println!(
+        "time from select! to request received: {:?}",
+        stats(&select_to_recv)
     );
 
     Ok(())
@@ -452,12 +498,9 @@ fn handle_req(
     recv_from_channel_times: &mut Vec<Duration>,
 ) {
     match req {
-        Request::SendMessage {
-            resp_sender,
-            builder,
-        } => {
+        Request::SendMessage { builder, .. } => {
             recv_from_channel_times.push(builder.created.elapsed());
-            state_machine.outbox_push_with_sender(builder, resp_sender);
+            state_machine.outbox_push(builder);
         }
         Request::Logout { resp_sender } => {
             let begin_string = Arc::clone(&state_machine.begin_string);
@@ -670,7 +713,9 @@ async fn receive_logon_request(
                 return Some(resp_sender);
             }
             Some(Request::SendMessage { resp_sender, .. }) => {
-                let _ = resp_sender.send(false);
+                if let Some(resp_sender) = resp_sender {
+                    let _ = resp_sender.send(false);
+                }
             }
             Some(Request::Logout { resp_sender, .. }) => {
                 let _ = resp_sender.send(true);

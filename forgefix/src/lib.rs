@@ -121,7 +121,8 @@ enum Request {
         resp_sender: oneshot::Sender<bool>,
     },
     SendMessage {
-        resp_sender: oneshot::Sender<bool>,
+        resp_sender: Option<oneshot::Sender<bool>>,
+        sent: Instant,
         builder: MessageBuilder,
     },
     Logout {
@@ -455,40 +456,29 @@ impl FixApplicationHandle {
     /// connection. It will yeild `false` if a message cannot be sent.
     ///
     /// [`oneshot::Receiver`]: https://docs.rs/tokio/latest/tokio/sync/oneshot/struct.Receiver.html
-    pub fn send_message(
-        &self,
-        builder: MessageBuilder,
-    ) -> Result<oneshot::Receiver<bool>, ApplicationError> {
+    pub fn send_message(&self, builder: MessageBuilder) -> Result<(), ApplicationError> {
         if self.request_sender.is_closed() {
             return Err(ApplicationError::SessionEnded);
         }
-        let (resp_sender, resp_receiver) = oneshot::channel();
         let send_message_request = Request::SendMessage {
-            resp_sender,
+            resp_sender: None,
+            sent: Instant::now(),
             builder,
         };
         let _ = self.request_sender.send(send_message_request);
-        Ok(resp_receiver)
+        Ok(())
     }
     /// Send a request to the engine to send the message in `builder` and await asynchronously.
     pub async fn send_message_async(
         &self,
         builder: MessageBuilder,
     ) -> Result<(), ApplicationError> {
-        let resp_sender = self.send_message(builder)?;
-        if Ok(true) != resp_sender.await {
-            return Err(ApplicationError::SendMessageFailed);
-        }
-        Ok(())
+        Ok(self.send_message(builder)?)
     }
     /// Send a request to the engine to send the message in `builder` and block until a result is
     /// returned.
     pub fn send_message_sync(&self, builder: MessageBuilder) -> Result<(), ApplicationError> {
-        let resp_receiver = self.send_message(builder)?;
-        if Ok(true) != resp_receiver.blocking_recv() {
-            return Err(ApplicationError::SendMessageFailed);
-        }
-        Ok(())
+        Ok(self.send_message(builder)?)
     }
 
     /// Send a request to the engine to end the FIX connection, and return immediately.

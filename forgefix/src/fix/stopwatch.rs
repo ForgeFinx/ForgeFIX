@@ -2,9 +2,9 @@ use crate::fix::session::Event;
 use tokio::time::{sleep_until, Duration, Instant, Sleep};
 
 pub(super) struct Timeout {
-    next_instant: Instant,
+    pub next_instant: Instant,
     duration: Duration,
-    event: Event,
+    pub event: Event,
 }
 
 impl Timeout {
