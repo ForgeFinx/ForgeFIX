@@ -325,9 +325,10 @@ pub(super) async fn spin_session(
 
     let mut header_buf: stream::HeaderBuf<{ stream::PEEK_LEN }> = stream::HeaderBuf::new();
 
-    let mut recv_from_channel_times: Vec<Duration> = Vec::with_capacity(100);
-    let mut to_tcp_stream_times: Vec<Duration> = Vec::with_capacity(100);
-    let mut recv_times: Vec<Duration> = Vec::with_capacity(100);
+    let mut recv_from_channel_times: Vec<Duration> = Vec::with_capacity(200);
+    let mut to_tcp_stream_times: Vec<Duration> = Vec::with_capacity(200);
+    let mut recv_times: Vec<Duration> = Vec::with_capacity(200);
+    let mut times_to_outbox: Vec<Duration> = Vec::with_capacity(200);
 
     let mut created_instants: Vec<Instant> = Vec::with_capacity(200);
 
@@ -343,6 +344,7 @@ pub(super) async fn spin_session(
             &mut logger,
             &mut fix_timeouts,
             &mut to_tcp_stream_times,
+            &mut times_to_outbox,
             &mut created_instants,
         )
         .await?;
@@ -409,37 +411,28 @@ pub(super) async fn spin_session(
     recv_from_channel_times.sort();
     to_tcp_stream_times.sort();
     recv_times.sort();
+    times_to_outbox.sort();
+
+    fn stats<T>(v: &Vec<T>) -> (&T, &T, &T) {
+        (&v[24], &v[49], &v[74])
+    }
 
     println!(
         "time from building message to received by engine: {:?}",
-        (
-            recv_from_channel_times[0],
-            recv_from_channel_times[24],
-            recv_from_channel_times[49],
-            recv_from_channel_times[74],
-            recv_from_channel_times[99],
-        )
+        stats(&recv_from_channel_times),
+    );
+    println!(
+        "time from building message to serialization: {:?}",
+        stats(&times_to_outbox),
     );
     println!(
         "time from building message to writing to TCP: {:?}",
-        (
-            to_tcp_stream_times[0],
-            to_tcp_stream_times[24],
-            to_tcp_stream_times[49],
-            to_tcp_stream_times[74],
-            to_tcp_stream_times[99]
-        )
+        stats(&to_tcp_stream_times),
     );
 
     println!(
         "time from building message to receiving something on TCP: {:?}",
-        (
-            recv_times[0],
-            recv_times[24],
-            recv_times[49],
-            recv_times[74],
-            recv_times[99]
-        )
+        stats(&recv_times),
     );
 
     Ok(())
@@ -698,6 +691,7 @@ async fn send_outgoing_messages(
     logger: &mut impl Logger,
     fix_timeouts: &mut FixTimeouts,
     to_tcp_stream_times: &mut Vec<Duration>,
+    times_to_outbox: &mut Vec<Duration>,
     created_instants: &mut Vec<Instant>,
 ) -> Result<(), SessionError> {
     if !state_machine.outbox.is_empty() {
@@ -709,6 +703,7 @@ async fn send_outgoing_messages(
         let created = msg.created;
         let msg_seq_num = state_machine.sequences.next_outgoing();
         let msg_buf = build_message_with_headers(msg, msg_seq_num, additional_headers).await?;
+        times_to_outbox.push(created.elapsed());
         stream::send_message(&msg_buf, stream, logger).await?;
         to_tcp_stream_times.push(created.elapsed());
         created_instants.push(created);

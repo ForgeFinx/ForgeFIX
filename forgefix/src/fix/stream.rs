@@ -79,7 +79,7 @@ where
     r.read_exact(&mut msg_vec[header_len..]).await?;
 
     let msg_buf: MsgBuf = msg_vec.into();
-    logger.log_message(&msg_buf)?;
+    // logger.log_message(&msg_buf)?;
 
     if let Err(e) = validate::validate_msg_length(msg_buf.0.as_slice(), msg_buf.len()) {
         let junk = skip_to_next_message(r, header).await?;
@@ -181,7 +181,7 @@ pub(super) async fn send_message<W: AsyncWrite + Unpin>(
             e.into()
         }
     })?;
-    l.log_message(msg_buf)?;
+    // l.log_message(msg_buf)?;
     Ok(())
 }
 
