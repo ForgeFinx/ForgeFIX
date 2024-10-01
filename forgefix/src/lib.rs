@@ -114,6 +114,8 @@ use tokio::sync::{mpsc, oneshot};
 
 use chrono::naive::NaiveTime;
 
+use rtrb::{Consumer, Producer, RingBuffer};
+
 enum Request {
     Logon {
         resp_sender: oneshot::Sender<bool>,
@@ -563,13 +565,12 @@ impl FixApplicationInitiator {
     /// [`close`]: tokio::sync::mpsc::UnboundedReceiver::close
     pub async fn initiate(
         self,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
+    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
         let stream = self.stream_factory.stream().await?;
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
-        let (app_message_event_sender, app_message_event_receiver) =
-            mpsc::unbounded_channel::<Arc<MsgBuf>>();
         let begin_string = Arc::clone(&self.settings.begin_string);
+
+        let (app_message_event_sender, app_message_event_receiver) = RingBuffer::new(1000);
 
         tokio::spawn(async move {
             if let Err(e) = fix::spin_session(
@@ -596,11 +597,9 @@ impl FixApplicationInitiator {
     pub fn initiate_with_runtime(
         self,
         runtime: tokio::runtime::Runtime,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
+    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
-        let (app_message_event_sender, app_message_event_receiver) =
-            mpsc::unbounded_channel::<Arc<MsgBuf>>();
+        let (app_message_event_sender, app_message_event_receiver) = RingBuffer::new(1000);
         let begin_string = Arc::clone(&self.settings.begin_string);
         let stream = runtime.block_on(self.stream_factory.stream())?;
 
@@ -625,8 +624,7 @@ impl FixApplicationInitiator {
     /// Initiate a TCP connection, and a runtime will be created internally to drive the engine.
     pub fn initiate_sync(
         self,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
+    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
@@ -661,13 +659,11 @@ impl FixApplicationAcceptor {
     /// messages.
     pub async fn accept(
         &mut self,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
+    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
         let stream = self.stream_factory.stream().await?;
         let settings = self.settings.clone();
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
-        let (app_message_event_sender, app_message_event_receiver) =
-            mpsc::unbounded_channel::<Arc<MsgBuf>>();
+        let (app_message_event_sender, app_message_event_receiver) = RingBuffer::new(1000);
         let begin_string = Arc::clone(&self.settings.begin_string);
 
         tokio::task::spawn(async move {
@@ -715,11 +711,13 @@ impl StreamFactory {
         match self {
             StreamFactory::Server(listener) => {
                 let (mut stream, _from_addr) = listener.accept().await?;
+                stream.set_nodelay(true)?;
                 Ok(stream)
             }
             StreamFactory::Client(addr) => {
                 let socket = TcpSocket::new_v4()?;
                 let mut stream = socket.connect(*addr).await?;
+                stream.set_nodelay(true)?;
                 Ok(stream)
             }
         }

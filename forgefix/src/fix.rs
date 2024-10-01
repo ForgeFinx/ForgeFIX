@@ -291,7 +291,7 @@ impl SessionParserCallback<'_> {
 pub(super) async fn spin_session(
     mut stream: TcpStream,
     mut request_receiver: mpsc::UnboundedReceiver<Request>,
-    message_received_event_sender: mpsc::UnboundedSender<Arc<MsgBuf>>,
+    mut message_received_event_sender: rtrb::Producer<Arc<MsgBuf>>,
     settings: SessionSettings,
 ) -> Result<()> {
     // SETUP
@@ -395,7 +395,7 @@ pub(super) async fn spin_session(
                     &mut stream,
                     &mut logger,
                     &additional_headers,
-                    &message_received_event_sender,
+                    &mut message_received_event_sender,
                 ).await?;
             }
             _ = timeout_fut => {
@@ -488,7 +488,7 @@ async fn handle_msg(
     stream: &mut TcpStream,
     logger: &mut impl Logger,
     additional_headers: &AdditionalHeaders,
-    message_received_event_sender: &mpsc::UnboundedSender<Arc<MsgBuf>>,
+    message_received_event_sender: &mut rtrb::Producer<Arc<MsgBuf>>,
 ) -> Result<()> {
     fix_timeouts.reset_test_request();
 
@@ -625,7 +625,7 @@ async fn handle_msg(
         }
         Ok(ref msg_type) if msg_type.is_application() => {
             if session::should_pass_app_message(state_machine, msg_seq_num) {
-                let _ = message_received_event_sender.send(Arc::clone(&msg));
+                let _ = message_received_event_sender.push(Arc::clone(&msg));
             }
             state_machine.handle(&Event::ApplicationMessageReceived(
                 msg_seq_num,
