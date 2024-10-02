@@ -325,18 +325,18 @@ pub(super) async fn spin_session(
 
     let mut header_buf: stream::HeaderBuf<{ stream::PEEK_LEN }> = stream::HeaderBuf::new();
 
-    let mut recv_from_channel_times: Vec<Duration> = Vec::with_capacity(200);
-    let mut to_tcp_stream_times: Vec<Duration> = Vec::with_capacity(200);
-    let mut recv_times: Vec<Duration> = Vec::with_capacity(200);
-    let mut times_to_outbox: Vec<Duration> = Vec::with_capacity(200);
+    let mut recv_from_channel_times: Vec<Duration> = Vec::with_capacity(2000);
+    let mut to_tcp_stream_times: Vec<Duration> = Vec::with_capacity(2000);
+    let mut recv_times: Vec<Duration> = Vec::with_capacity(2000);
+    let mut times_to_outbox: Vec<Duration> = Vec::with_capacity(2000);
 
-    let mut req_to_recv: Vec<Duration> = Vec::with_capacity(200);
-    let mut select_to_recv: Vec<Duration> = Vec::with_capacity(200);
+    let mut req_to_recv: Vec<Duration> = Vec::with_capacity(2000);
+    let mut select_to_recv: Vec<Duration> = Vec::with_capacity(2000);
 
-    let mut incoming_times: Vec<Duration> = Vec::with_capacity(200);
-    let mut try_read_times: Vec<Duration> = Vec::with_capacity(200);
+    let mut incoming_times: Vec<Duration> = Vec::with_capacity(2000);
+    let mut try_read_times: Vec<Duration> = Vec::with_capacity(2000);
 
-    let mut created_instants: Vec<Instant> = Vec::with_capacity(200);
+    let mut created_instants: Vec<Instant> = Vec::with_capacity(2000);
 
     // LOOP
 
