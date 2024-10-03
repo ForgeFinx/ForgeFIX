@@ -555,7 +555,7 @@ impl FixApplicationInitiator {
     /// [`close`]: tokio::sync::mpsc::UnboundedReceiver::close
     pub async fn initiate(
         self,
-    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
+    ) -> Result<(FixApplicationHandle, Consumer<(Instant, Arc<MsgBuf>)>), ApplicationError> {
         let stream = self.stream_factory.stream().await?;
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
         let begin_string = Arc::clone(&self.settings.begin_string);
@@ -587,7 +587,7 @@ impl FixApplicationInitiator {
     pub fn initiate_with_runtime(
         self,
         runtime: tokio::runtime::Runtime,
-    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
+    ) -> Result<(FixApplicationHandle, Consumer<(Instant, Arc<MsgBuf>)>), ApplicationError> {
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
         let (app_message_event_sender, app_message_event_receiver) = RingBuffer::new(1000);
         let begin_string = Arc::clone(&self.settings.begin_string);
@@ -614,7 +614,7 @@ impl FixApplicationInitiator {
     /// Initiate a TCP connection, and a runtime will be created internally to drive the engine.
     pub fn initiate_sync(
         self,
-    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
+    ) -> Result<(FixApplicationHandle, Consumer<(Instant, Arc<MsgBuf>)>), ApplicationError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
@@ -649,7 +649,7 @@ impl FixApplicationAcceptor {
     /// messages.
     pub async fn accept(
         &mut self,
-    ) -> Result<(FixApplicationHandle, Consumer<Arc<MsgBuf>>), ApplicationError> {
+    ) -> Result<(FixApplicationHandle, Consumer<(Instant, Arc<MsgBuf>)>), ApplicationError> {
         let stream = self.stream_factory.stream().await?;
         let settings = self.settings.clone();
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();

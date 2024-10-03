@@ -292,7 +292,7 @@ impl SessionParserCallback<'_> {
 pub(super) async fn spin_session(
     mut stream: TcpStream,
     mut request_receiver: mpsc::UnboundedReceiver<Request>,
-    mut message_received_event_sender: rtrb::Producer<Arc<MsgBuf>>,
+    mut message_received_event_sender: rtrb::Producer<(Instant, Arc<MsgBuf>)>,
     settings: SessionSettings,
 ) -> Result<()> {
     // SETUP
@@ -334,7 +334,8 @@ pub(super) async fn spin_session(
     let mut select_to_recv: Vec<Duration> = Vec::with_capacity(2000);
 
     let mut incoming_times: Vec<Duration> = Vec::with_capacity(2000);
-    let mut try_read_times: Vec<Duration> = Vec::with_capacity(2000);
+
+    let mut pass_to_channel_times: Vec<Duration> = Vec::with_capacity(2000);
 
     let mut created_instants: Vec<Instant> = Vec::with_capacity(2000);
 
@@ -383,12 +384,14 @@ pub(super) async fn spin_session(
             }
 
             let mut byte: [u8; 1] = [0; 1];
-            let try_read_start = Instant::now();
             if let Ok(n) = stream.try_read(&mut byte[..]) {
-                try_read_times.push(try_read_start.elapsed());
-                if recv_times.len() != 0 || created_instants.len() != 0 {
-                    incoming_times.push(created_instants[incoming_times.len()].elapsed());
-                }
+                let created_instant = if recv_times.len() != 0 || created_instants.len() != 0 {
+                    let created_instant = created_instants[incoming_times.len()];
+                    incoming_times.push(created_instant.elapsed());
+                    Some(created_instant)
+                } else {
+                    None
+                };
 
                 let _ = stream::read_header(&mut &byte[..], &mut header_buf).await;
                 let maybe_err = stream::read_header(&mut stream, &mut header_buf).await;
@@ -416,6 +419,8 @@ pub(super) async fn spin_session(
                     &mut logger,
                     &additional_headers,
                     &mut message_received_event_sender,
+                    created_instant,
+                    &mut pass_to_channel_times,
                 )
                 .await?;
                 break;
@@ -439,10 +444,10 @@ pub(super) async fn spin_session(
     req_to_recv.sort();
     select_to_recv.sort();
     incoming_times.sort();
-    try_read_times.sort();
+    pass_to_channel_times.sort();
 
     fn stats<T>(v: &Vec<T>) -> (&T, &T, &T) {
-        (&v[24], &v[49], &v[74])
+        (&v[249], &v[499], &v[749])
     }
 
     println!(
@@ -462,14 +467,15 @@ pub(super) async fn spin_session(
         "time from building message to first byte coming in on TCP: {:?}",
         stats(&incoming_times),
     );
+
     println!(
-        "time took to try_read from TCP stream: {:?}",
-        stats(&try_read_times),
+        "time from building message to receiving full message off TCP: {:?}",
+        stats(&recv_times),
     );
 
     println!(
-        "time from building message to receiving something on TCP: {:?}",
-        stats(&recv_times),
+        "time from building message to about to pass response to channel: {:?}",
+        stats(&pass_to_channel_times),
     );
 
     println!(
@@ -525,7 +531,9 @@ async fn handle_msg(
     stream: &mut TcpStream,
     logger: &mut impl Logger,
     additional_headers: &AdditionalHeaders,
-    message_received_event_sender: &mut rtrb::Producer<Arc<MsgBuf>>,
+    message_received_event_sender: &mut rtrb::Producer<(Instant, Arc<MsgBuf>)>,
+    created_instant: Option<Instant>,
+    pass_to_channel_times: &mut Vec<Duration>,
 ) -> Result<()> {
     fix_timeouts.reset_test_request();
 
@@ -662,7 +670,11 @@ async fn handle_msg(
         }
         Ok(ref msg_type) if msg_type.is_application() => {
             if session::should_pass_app_message(state_machine, msg_seq_num) {
-                let _ = message_received_event_sender.push(Arc::clone(&msg));
+                //let msg = Arc::clone(&msg);
+                if let Some(created_instant) = created_instant {
+                    pass_to_channel_times.push(created_instant.elapsed());
+                }
+                let _ = message_received_event_sender.push((Instant::now(), msg));
             }
             state_machine.handle(&Event::ApplicationMessageReceived(
                 msg_seq_num,
