@@ -669,6 +669,7 @@ async fn handle_msg(
             ));
         }
         Ok(ref msg_type) if msg_type.is_application() => {
+            let poss_dup_flag = cb.poss_dup_flag;
             if session::should_pass_app_message(state_machine, msg_seq_num) {
                 //let msg = Arc::clone(&msg);
                 if let Some(created_instant) = created_instant {
@@ -678,7 +679,7 @@ async fn handle_msg(
             }
             state_machine.handle(&Event::ApplicationMessageReceived(
                 msg_seq_num,
-                to_poss_dup_flag(cb.poss_dup_flag),
+                to_poss_dup_flag(poss_dup_flag),
             ));
         }
         _ => {
