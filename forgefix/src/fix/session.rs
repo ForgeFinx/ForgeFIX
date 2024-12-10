@@ -310,7 +310,7 @@ impl MyStateMachine {
             }
 
             if next > end || Some(*end) == event.get_msg_seq_num() {
-                let _ = self.sequences.reset_incoming(*end + 1);
+                let _ = self.sequences.reset_incoming(*next);
                 self.rereceive_range = None;
                 if matches!(*return_state, State::End) {
                     let message = build_logout_message(&self.begin_string);
