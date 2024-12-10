@@ -269,58 +269,54 @@ impl MyStateMachine {
         }
     }
     fn expecting_resends(&mut self, event: &Event, return_state: Arc<State>) -> Response {
-        if self.rereceive_range.is_none() {
-            return Response::Transition(State::Error);
-        }
-        let (next, end) = self.rereceive_range.as_mut().unwrap();
+        let (next, end) = match self.rereceive_range.as_mut() {
+            Some(v) => v,
+            None => return Response::Transition(State::Error),
+        };
 
         if !event.is_poss_dup() {
-            match event {
-                Event::LogoutReceived(..) => {
-                    let message = build_logout_message(&self.begin_string);
-                    self.outbox_push(message);
-                    Response::Transition(State::End)
-                }
-                _ => self.post_logon(event),
+            if matches!(event, Event::LogoutReceived(..)) {
+                let message = build_logout_message(&self.begin_string);
+                self.outbox_push(message);
+                return Response::Transition(State::End);
+            } else {
+                return self.post_logon(event);
             }
-        } else {
-            if event.get_msg_seq_num() != Some(*next) && !event.is_sequence_reset() {
-                return Response::Handled;
-            }
-            match event {
-                Event::SequenceResetReceived {
-                    msg_seq_num,
-                    gap_fill,
-                    new_seq_no,
-                    ..
-                } => {
-                    if *gap_fill == Some(GapFillFlag::YES) {
-                        *next = *new_seq_no;
-                    } else {
-                        self.reset_expected_incoming(*msg_seq_num, *new_seq_no);
-                        return Response::Transition((*return_state).clone());
-                    }
-                }
-                Event::ApplicationMessageReceived(..) => {
-                    *next += 1;
-                }
-                _ => {
-                    *next += 1;
-                }
-            }
+        };
 
-            if next > end || Some(*end) == event.get_msg_seq_num() {
-                let _ = self.sequences.reset_incoming(*next);
-                self.rereceive_range = None;
-                if matches!(*return_state, State::End) {
-                    let message = build_logout_message(&self.begin_string);
-                    self.outbox_push(message);
-                }
-                return Response::Transition((*return_state).clone());
-            }
-            Response::Handled
+        if let Event::SequenceResetReceived {
+            gap_fill: Some(GapFillFlag::NO) | None,
+            msg_seq_num,
+            new_seq_no,
+            ..
+        } = event
+        {
+            self.reset_expected_incoming(*msg_seq_num, *new_seq_no);
+            return Response::Transition((*return_state).clone());
         }
+
+        if event.get_msg_seq_num() != Some(*next) {
+            return Response::Handled;
+        }
+
+        let next_seq_num = match event {
+            Event::SequenceResetReceived { new_seq_no, .. } => *new_seq_no,
+            _ => *next + 1,
+        };
+
+        *next = next_seq_num;
+        if next > end {
+            let _ = self.sequences.reset_incoming(*next);
+            self.rereceive_range = None;
+            if matches!(*return_state, State::End) {
+                let message = build_logout_message(&self.begin_string);
+                self.outbox_push(message);
+            }
+            return Response::Transition((*return_state).clone());
+        }
+        Response::Handled
     }
+
     fn expecting_test_response(&mut self, event: &Event) -> Response {
         match event {
             Event::HeartbeatReceived(..) => {
