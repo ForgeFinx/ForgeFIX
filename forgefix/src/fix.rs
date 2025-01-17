@@ -21,9 +21,9 @@ use crate::fix::log::{FileLogger, Logger};
 use crate::fix::resend::Transformer;
 use crate::fix::session::{Event, MyStateMachine};
 use crate::fix::stopwatch::FixTimeouts;
-use crate::fix::store::Store;
 use crate::fix::validate::validate_msg;
 use crate::{FixEngineType, Request, SessionSettings};
+use store::Store;
 
 use generated::MsgType;
 use generated::MsgType::*;
@@ -43,9 +43,18 @@ mod log;
 mod resend;
 mod session;
 mod stopwatch;
-mod store;
 mod stream;
 mod validate;
+
+#[cfg(feature = "sqlite")]
+mod sqlite_store;
+#[cfg(feature = "sqlite")]
+use sqlite_store as store;
+
+#[cfg(not(feature = "sqlite"))]
+mod vec_store;
+#[cfg(not(feature = "sqlite"))]
+use vec_store as store;
 
 #[derive(Debug, Error)]
 enum SessionError {
