@@ -98,6 +98,12 @@
 //! ```
 //! *When using synchronous API, a tokio runtime is still created internally (see
 //! [`FixApplicationInitiator`])
+//!
+//! ## Feature Flags
+//!
+//! - `sqlite`: Enables the sqlite3 database backed store. Allows messages and
+//! sequences numbers to be persisted to disk, so ForgeFIX can pick up in the middle of a session
+//! if restarted. Otherwise, every restart results in a new FIX session.
 
 pub mod fix;
 use fix::encode::MessageBuilder;
