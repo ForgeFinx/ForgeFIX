@@ -1,17 +1,17 @@
 use anyhow::Result;
 
-use crate::SessionSettings;
 use crate::fix::mem::MsgBuf;
+use crate::SessionSettings;
 
 use std::sync::Arc;
-use std::time::Instant; 
+use std::time::Instant;
 
-use chrono::offset::Utc; 
-use chrono::naive::NaiveDateTime; 
-use chrono::{DateTime, Duration}; 
+use chrono::naive::NaiveDateTime;
+use chrono::offset::Utc;
+use chrono::{DateTime, Duration};
+use rusqlite::{OpenFlags, OptionalExtension};
 use tokio::sync::{mpsc, oneshot};
 use tokio_rusqlite::Connection;
-use rusqlite::{OptionalExtension, OpenFlags};
 
 const SQL_ENTER_WAL_MODE: &str = "PRAGMA journal_mode=WAL;";
 const SQL_VACUUM: &str = "VACUUM;";
@@ -38,7 +38,7 @@ enum StoreRequest {
         oneshot::Sender<Result<Vec<(u32, Vec<u8>)>>>,
     ),
     GetSequences(Arc<String>, oneshot::Sender<Result<(u32, u32)>>),
-    SetSequences(Arc<String>, u32, u32, oneshot::Sender<Result<()>>),   
+    SetSequences(Arc<String>, u32, u32, oneshot::Sender<Result<()>>),
     LastSendTime(Arc<String>, oneshot::Sender<Result<Option<DateTime<Utc>>>>),
     Disconnect(oneshot::Sender<Result<()>>),
 }
@@ -49,21 +49,23 @@ pub struct Store {
 
 impl Store {
     pub async fn build(settings: &SessionSettings) -> Result<Store> {
-        let conn = Connection::open_with_flags(settings.store_path.clone(), OpenFlags::default()).await?;
+        let conn =
+            Connection::open_with_flags(settings.store_path.clone(), OpenFlags::default()).await?;
         let epoch = settings.epoch.clone();
         setup(&conn, epoch).await?;
         let (sender, mut receiver) = mpsc::unbounded_channel();
 
         tokio::spawn(async move {
-            let begin_time = Utc::now(); 
-            let begin_instant = Instant::now(); 
+            let begin_time = Utc::now();
+            let begin_instant = Instant::now();
             while let Some(req) = receiver.recv().await {
                 match req {
                     StoreRequest::StoreOutgoing(epoch, msg_seq_num, send_instant, msg) => {
-                        let send_time = match Duration::from_std(send_instant.duration_since(begin_instant)) {
-                            Ok(d) => begin_time + d, 
-                            Err(_) => Utc::now(),
-                        };
+                        let send_time =
+                            match Duration::from_std(send_instant.duration_since(begin_instant)) {
+                                Ok(d) => begin_time + d,
+                                Err(_) => Utc::now(),
+                            };
                         if store_outgoing(&conn, epoch, msg_seq_num, send_time, msg)
                             .await
                             .is_err()
@@ -84,8 +86,8 @@ impl Store {
                         let _ = sender.send(resp);
                     }
                     StoreRequest::LastSendTime(epoch, sender) => {
-                        let resp = last_send_time(&conn, epoch).await; 
-                        let _ = sender.send(resp); 
+                        let resp = last_send_time(&conn, epoch).await;
+                        let _ = sender.send(resp);
                     }
                     StoreRequest::Disconnect(sender) => {
                         let resp = vacuum(&conn).await;
@@ -104,7 +106,7 @@ impl Store {
         &self,
         epoch: Arc<String>,
         msg_seq_num: u32,
-        send_instant: Instant, 
+        send_instant: Instant,
         msg: Arc<MsgBuf>,
     ) -> Result<()> {
         let req = StoreRequest::StoreOutgoing(epoch, msg_seq_num, send_instant, msg);
@@ -145,12 +147,9 @@ impl Store {
         Ok(())
     }
 
-    pub async fn last_send_time(
-        &self,
-        epoch: Arc<String>, 
-    ) -> Result<Option<DateTime<Utc>>> {
-        let (sender, receiver) = oneshot::channel(); 
-        let req = StoreRequest::LastSendTime(epoch, sender); 
+    pub async fn last_send_time(&self, epoch: Arc<String>) -> Result<Option<DateTime<Utc>>> {
+        let (sender, receiver) = oneshot::channel();
+        let req = StoreRequest::LastSendTime(epoch, sender);
         self.sender.send(req)?;
         receiver.await?
     }
@@ -187,12 +186,10 @@ async fn setup(conn: &tokio_rusqlite::Connection, epoch: Arc<String>) -> Result<
 }
 
 async fn vacuum(conn: &tokio_rusqlite::Connection) -> Result<()> {
-    conn.call(move |conn| {
-        conn.execute(SQL_VACUUM, [])
-    })
-    .await
-    .map(|_| ())
-    .map_err(|e| e.into())
+    conn.call(move |conn| conn.execute(SQL_VACUUM, []))
+        .await
+        .map(|_| ())
+        .map_err(|e| e.into())
 }
 
 async fn get_sequences(
@@ -241,7 +238,12 @@ async fn store_outgoing(
     conn.call(move |conn| {
         conn.execute(
             SQL_INSERT_OUTGOING_MESSAGE,
-            (epoch, msg_seq_num, format!("{}", send_time.format(TIME_FORMAT)), &msg.as_ref()[..]),
+            (
+                epoch,
+                msg_seq_num,
+                format!("{}", send_time.format(TIME_FORMAT)),
+                &msg.as_ref()[..],
+            ),
         )
     })
     .await
@@ -272,16 +274,14 @@ async fn get_prev_messages(
 }
 
 async fn last_send_time(
-    conn: &tokio_rusqlite::Connection, 
-    epoch: Arc<String>, 
+    conn: &tokio_rusqlite::Connection,
+    epoch: Arc<String>,
 ) -> Result<Option<DateTime<Utc>>> {
-    let send_time = conn.call(move |conn| -> rusqlite::Result<Option<NaiveDateTime>> {
-        conn.query_row(
-           SQL_LAST_SEND_TIME,
-           [epoch],
-           |row| row.get(0)
-        )
-        .optional()
-    }).await?; 
+    let send_time = conn
+        .call(move |conn| -> rusqlite::Result<Option<NaiveDateTime>> {
+            conn.query_row(SQL_LAST_SEND_TIME, [epoch], |row| row.get(0))
+                .optional()
+        })
+        .await?;
     Ok(send_time.map(|n| n.and_utc()))
 }

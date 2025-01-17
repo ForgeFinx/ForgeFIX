@@ -7,7 +7,7 @@ use chrono::{DateTime, Duration, Utc};
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn validate_msg<'a>(
-    expected_sender_comp_id: &str, 
+    expected_sender_comp_id: &str,
     expected_target_comp_id: &str,
     msg_type: char,
     msg_seq_num: u32,

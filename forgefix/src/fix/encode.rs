@@ -1,11 +1,11 @@
-//! Message building and encoding. 
+//! Message building and encoding.
 //!
 //! FIX messages can be easily built using the [`MessageBuilder`]. The [`MessageBuilder`] can be
 //! given any number of tag/value pairs. It is recommended to use [`Tags`] for tags, and the
-//! following for values: 
+//! following for values:
 //!
 //! * [`MsgType`] for `MsgType(35)`
-//! * [generated enums] for FIX enumerations 
+//! * [generated enums] for FIX enumerations
 //! * [`SerializedInt`] for integer values
 //! * `b"..."` for ASCII fields like text and floats (see [FIX dictionary])
 //!
@@ -16,8 +16,8 @@
 //!
 //! ## Example
 //! ```rust
-//! use forgefix::fix::encode::{MessageBuilder, SerializedInt}; 
-//! use forgefix::fix::generated::{self, MsgType, Tags}; 
+//! use forgefix::fix::encode::{MessageBuilder, SerializedInt};
+//! use forgefix::fix::generated::{self, MsgType, Tags};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,7 +26,7 @@
 //!     .push(Tags::OrderQty, SerializedInt::from(1u32).as_bytes())
 //!     .push(Tags::OrdType, generated::OrdType::LIMIT.into())
 //!     .push(Tags::Price, b"10.42")
-//!     .push(Tags::Symbol, b"TICKER SYMBOL"); 
+//!     .push(Tags::Symbol, b"TICKER SYMBOL");
 //!
 //! # Ok(())
 //! # }
@@ -49,11 +49,11 @@ pub fn formatted_time() -> String {
     format!("{}", Utc::now().format(TIME_FORMAT))
 }
 
-/// A struct for building FIX messages. 
+/// A struct for building FIX messages.
 ///
 /// The `MessageBuilder` is used to encode FIX messages. FIX requires certain fields to
-/// always be present. The `MessageBuilder` will include these automatically. 
-/// Therefore, **do not add the following**: 
+/// always be present. The `MessageBuilder` will include these automatically.
+/// Therefore, **do not add the following**:
 ///
 /// * `BodyLength(9)`
 /// * `MsgSeqNum(34)`
@@ -63,12 +63,12 @@ pub fn formatted_time() -> String {
 /// * `Checksum(10)`
 ///
 /// MessageBuilder fields do not get checked for validity, therefore it is possible to send invalid
-/// FIX messages if a particular value is invalid for the given field. 
+/// FIX messages if a particular value is invalid for the given field.
 ///
 /// ## Example
 /// ```rust
-/// use forgefix::fix::encode::{MessageBuilder, SerializedInt}; 
-/// use forgefix::fix::generated::{self, MsgType, Tags}; 
+/// use forgefix::fix::encode::{MessageBuilder, SerializedInt};
+/// use forgefix::fix::generated::{self, MsgType, Tags};
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -78,7 +78,7 @@ pub fn formatted_time() -> String {
 ///     .push(Tags::OrdType, generated::OrdType::LIMIT.into())
 ///     .push(Tags::Price, b"10.42");
 ///
-/// builder.push_mut(Tags::Symbol, b"TICKER SYMBOL"); 
+/// builder.push_mut(Tags::Symbol, b"TICKER SYMBOL");
 ///
 /// assert_eq!(builder.msg_type(), MsgType::ORDER_SINGLE.into());
 ///
@@ -96,7 +96,7 @@ pub(super) const SOH: &[u8] = &[b'\x01'];
 
 impl MessageBuilder {
     /// Creates a new [`MessageBuilder`] with `begin_string` and `msg_type`. It is helpful to use
-    /// [`MsgType`] variants for `msg_type`. 
+    /// [`MsgType`] variants for `msg_type`.
     ///
     /// [`MsgType`]: ../generated/enum.MsgType.html
     pub fn new(begin_string: &str, msg_type: char) -> Self {
@@ -186,12 +186,12 @@ impl MessageBuilder {
 
 /// A [`u64`]/[`u32`] wrapper that can convert an int to its ASCII representation
 ///
-/// ## Example 
+/// ## Example
 ///
 /// ```rust
 /// # use forgefix::fix::encode::SerializedInt;
-/// let num = SerializedInt::from(15u32); 
-/// assert_eq!(num.as_bytes(), b"15"); 
+/// let num = SerializedInt::from(15u32);
+/// assert_eq!(num.as_bytes(), b"15");
 /// ```
 #[derive(Default)]
 pub struct SerializedInt([u8; 32], usize);
