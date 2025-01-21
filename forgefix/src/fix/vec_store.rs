@@ -30,7 +30,7 @@ pub struct Store {
 }
 
 impl Store {
-    pub async fn build(_settings: &SessionSettings) -> Result<Store> {
+    pub fn build(_settings: &SessionSettings) -> Result<Store> {
         Ok(Self {
             db: Mutex::new(Db::new()),
             begin_instant: Instant::now(),

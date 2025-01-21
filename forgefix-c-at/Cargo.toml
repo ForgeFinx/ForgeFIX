@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.1.4", features = ["derive"] }
+forgefix-c = { path = "../forgefix-c" }
 
 [build-dependencies]
 cc = "1.0"
-forgefix-c = { path = "../forgefix-c" }

@@ -306,7 +306,7 @@ pub(super) async fn spin_session(
     // SETUP
 
     let additional_headers = AdditionalHeaders::build(&settings);
-    let store = Store::build(&settings).await?;
+    let store = Store::build(&settings)?;
     let mut logger = FileLogger::build(&settings).await?;
     let sequences = store.get_sequences(settings.epoch.clone()).await?;
     let mut state_machine = MyStateMachine::new(&settings, sequences);

@@ -9,9 +9,8 @@ use std::time::Instant;
 use chrono::naive::NaiveDateTime;
 use chrono::offset::Utc;
 use chrono::{DateTime, Duration};
-use rusqlite::{OpenFlags, OptionalExtension};
+use rusqlite::OptionalExtension;
 use tokio::sync::{mpsc, oneshot};
-use tokio_rusqlite::Connection;
 
 const SQL_ENTER_WAL_MODE: &str = "PRAGMA journal_mode=WAL;";
 const SQL_VACUUM: &str = "VACUUM;";
@@ -48,17 +47,17 @@ pub struct Store {
 }
 
 impl Store {
-    pub async fn build(settings: &SessionSettings) -> Result<Store> {
-        let conn =
-            Connection::open_with_flags(settings.store_path.clone(), OpenFlags::default()).await?;
-        let epoch = settings.epoch.clone();
-        setup(&conn, epoch).await?;
+    pub fn build(settings: &SessionSettings) -> Result<Store> {
+        let conn = rusqlite::Connection::open(&settings.store_path)?;
+        setup(&conn, &settings.epoch)?;
+
         let (sender, mut receiver) = mpsc::unbounded_channel();
 
-        tokio::spawn(async move {
+        tokio::task::spawn_blocking(move || {
             let begin_time = Utc::now();
             let begin_instant = Instant::now();
-            while let Some(req) = receiver.recv().await {
+
+            while let Some(req) = receiver.blocking_recv() {
                 match req {
                     StoreRequest::StoreOutgoing(epoch, msg_seq_num, send_instant, msg) => {
                         let send_time =
@@ -66,33 +65,30 @@ impl Store {
                                 Ok(d) => begin_time + d,
                                 Err(_) => Utc::now(),
                             };
-                        if store_outgoing(&conn, epoch, msg_seq_num, send_time, msg)
-                            .await
-                            .is_err()
-                        {
+                        if store_outgoing(&conn, &epoch, msg_seq_num, send_time, msg).is_err() {
                             eprintln!("error storing outgoing messages");
                         }
                     }
                     StoreRequest::GetPrevMessages(epoch, begin, end, last, sender) => {
-                        let resp = get_prev_messages(&conn, epoch, begin, end, last).await;
+                        let resp = get_prev_messages(&conn, &epoch, begin, end, last);
                         let _ = sender.send(resp);
                     }
                     StoreRequest::GetSequences(epoch, sender) => {
-                        let resp = get_sequences(&conn, epoch).await;
+                        let resp = get_sequences(&conn, &epoch);
                         let _ = sender.send(resp);
                     }
                     StoreRequest::SetSequences(epoch, outgoing, incoming, sender) => {
-                        let resp = set_sequences(&conn, epoch, outgoing, incoming).await;
+                        let resp = set_sequences(&conn, &epoch, outgoing, incoming);
                         let _ = sender.send(resp);
                     }
                     StoreRequest::LastSendTime(epoch, sender) => {
-                        let resp = last_send_time(&conn, epoch).await;
+                        let resp = last_send_time(&conn, &epoch);
                         let _ = sender.send(resp);
                     }
                     StoreRequest::Disconnect(sender) => {
-                        let resp = vacuum(&conn).await;
-                        let _ = sender.send(resp);
+                        let resp = vacuum(&conn);
                         drop(conn);
+                        let _ = sender.send(resp);
                         break;
                     }
                 }
@@ -163,125 +159,95 @@ impl Store {
     }
 }
 
-async fn setup(conn: &tokio_rusqlite::Connection, epoch: Arc<String>) -> Result<(u32, u32)> {
-    conn.call(move |conn| {
-        conn.query_row(SQL_ENTER_WAL_MODE, (), |_| Ok(()))?;
-        conn.execute(SQL_CREATE_SEQUENCES, ())?;
-        conn.execute(SQL_ENSURE_SEQUENCE_ROW, (Arc::clone(&epoch),))?;
-        conn.execute(SQL_CREATE_INCOMING_TABLE, ())?;
-        conn.execute(SQL_CREATE_OUTGOING_TABLE, ())?;
-
-        conn.query_row(
-            "SELECT next_incoming, next_outgoing FROM sequences where epoch_guid = ?;",
-            (Arc::clone(&epoch),),
-            |r| {
-                let next_incoming: u32 = r.get(0)?;
-                let next_outgoing: u32 = r.get(1)?;
-                Ok((next_incoming, next_outgoing))
-            },
-        )
-    })
-    .await
-    .map_err(|err| err.into())
+fn setup(conn: &rusqlite::Connection, epoch: &str) -> Result<(u32, u32)> {
+    conn.query_row(SQL_ENTER_WAL_MODE, (), |_| Ok(()))?;
+    conn.execute(SQL_CREATE_SEQUENCES, ())?;
+    conn.execute(SQL_ENSURE_SEQUENCE_ROW, (&epoch,))?;
+    conn.execute(SQL_CREATE_INCOMING_TABLE, ())?;
+    conn.execute(SQL_CREATE_OUTGOING_TABLE, ())?;
+    Ok(conn.query_row(
+        "SELECT next_incoming, next_outgoing FROM sequences where epoch_guid = ?;",
+        (epoch,),
+        |r| {
+            let next_incoming: u32 = r.get(0)?;
+            let next_outgoing: u32 = r.get(1)?;
+            Ok((next_incoming, next_outgoing))
+        },
+    )?)
 }
 
-async fn vacuum(conn: &tokio_rusqlite::Connection) -> Result<()> {
-    conn.call(move |conn| conn.execute(SQL_VACUUM, []))
-        .await
-        .map(|_| ())
-        .map_err(|e| e.into())
+fn vacuum(conn: &rusqlite::Connection) -> Result<()> {
+    conn.execute(SQL_VACUUM, [])?;
+    Ok(())
 }
 
-async fn get_sequences(
-    conn: &tokio_rusqlite::Connection,
-    epoch: Arc<String>,
-) -> Result<(u32, u32)> {
-    conn.call(move |conn| {
-        conn.query_row(
-            "SELECT next_incoming, next_outgoing FROM sequences where epoch_guid = ?;",
-            (Arc::clone(&epoch),),
-            |r| {
-                let next_incoming: u32 = r.get(0)?;
-                let next_outgoing: u32 = r.get(1)?;
-                Ok((next_incoming, next_outgoing))
-            },
-        )
-    })
-    .await
-    .map_err(|err| err.into())
+fn get_sequences(conn: &rusqlite::Connection, epoch: &str) -> Result<(u32, u32)> {
+    Ok(conn.query_row(
+        "SELECT next_incoming, next_outgoing FROM sequences where epoch_guid = ?;",
+        (epoch,),
+        |r| {
+            let next_incoming: u32 = r.get(0)?;
+            let next_outgoing: u32 = r.get(1)?;
+            Ok((next_incoming, next_outgoing))
+        },
+    )?)
 }
 
-async fn set_sequences(
-    conn: &tokio_rusqlite::Connection,
-    epoch: Arc<String>,
+fn set_sequences(
+    conn: &rusqlite::Connection,
+    epoch: &str,
     new_outgoing: u32,
     new_incoming: u32,
 ) -> Result<()> {
-    conn.call(move |conn| {
-        conn.execute(
-            "UPDATE sequences SET next_outgoing = ?1, next_incoming = ?2 WHERE epoch_guid = ?3",
-            (new_outgoing, new_incoming, Arc::clone(&epoch)),
-        )
-    })
-    .await
-    .map(|_| ())
-    .map_err(|err| err.into())
+    conn.execute(
+        "UPDATE sequences SET next_outgoing = ?1, next_incoming = ?2 WHERE epoch_guid = ?3",
+        (new_outgoing, new_incoming, epoch),
+    )?;
+    Ok(())
 }
 
-async fn store_outgoing(
-    conn: &tokio_rusqlite::Connection,
-    epoch: Arc<String>,
+fn store_outgoing(
+    conn: &rusqlite::Connection,
+    epoch: &str,
     msg_seq_num: u32,
     send_time: DateTime<Utc>,
     msg: Arc<MsgBuf>,
 ) -> Result<()> {
-    conn.call(move |conn| {
-        conn.execute(
-            SQL_INSERT_OUTGOING_MESSAGE,
-            (
-                epoch,
-                msg_seq_num,
-                format!("{}", send_time.format(TIME_FORMAT)),
-                &msg.as_ref()[..],
-            ),
-        )
-    })
-    .await
-    .map(|_| ())
-    .map_err(|err| err.into())
+    conn.execute(
+        SQL_INSERT_OUTGOING_MESSAGE,
+        (
+            epoch,
+            msg_seq_num,
+            format!("{}", send_time.format(TIME_FORMAT)),
+            &msg.as_ref()[..],
+        ),
+    )?;
+    Ok(())
 }
 
-async fn get_prev_messages(
-    conn: &tokio_rusqlite::Connection,
-    epoch: Arc<String>,
+fn get_prev_messages(
+    conn: &rusqlite::Connection,
+    epoch: &str,
     begin_seq_no: u32,
     end_seq_no: u32,
     last_seq_no: u32,
 ) -> Result<Vec<(u32, Vec<u8>)>> {
     let mut output: Vec<(u32, Vec<u8>)> = Vec::new();
-    output = conn.call(move |conn| -> Result<Vec<(u32, Vec<u8>)>> {
-        let mut stmt = conn.prepare("SELECT msg_seq_num, message FROM (SELECT * FROM outgoing_messages WHERE epoch_guid = ?1 ORDER BY key DESC LIMIT ?2) WHERE msg_seq_num BETWEEN ?3 AND ?4;")?;
-        let rows = stmt.query_map(
-            rusqlite::params![Arc::clone(&epoch), &last_seq_no, &begin_seq_no, &end_seq_no], |row| {
-                Ok((row.get(0)?, row.get(1)?))
-            })?;
-        for row in rows {
-            output.push(row?);
-        }
-        Ok(output)
-    }).await?;
+    let mut stmt = conn.prepare("SELECT msg_seq_num, message FROM (SELECT * FROM outgoing_messages WHERE epoch_guid = ?1 ORDER BY key DESC LIMIT ?2) WHERE msg_seq_num BETWEEN ?3 AND ?4;")?;
+    let rows = stmt.query_map(
+        rusqlite::params![epoch, &last_seq_no, &begin_seq_no, &end_seq_no],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+    for row in rows {
+        output.push(row?);
+    }
     Ok(output)
 }
 
-async fn last_send_time(
-    conn: &tokio_rusqlite::Connection,
-    epoch: Arc<String>,
-) -> Result<Option<DateTime<Utc>>> {
-    let send_time = conn
-        .call(move |conn| -> rusqlite::Result<Option<NaiveDateTime>> {
-            conn.query_row(SQL_LAST_SEND_TIME, [epoch], |row| row.get(0))
-                .optional()
+fn last_send_time(conn: &rusqlite::Connection, epoch: &str) -> Result<Option<DateTime<Utc>>> {
+    Ok(conn
+        .query_row(SQL_LAST_SEND_TIME, [epoch], |row| {
+            row.get::<usize, NaiveDateTime>(0).map(|n| n.and_utc())
         })
-        .await?;
-    Ok(send_time.map(|n| n.and_utc()))
+        .optional()?)
 }
