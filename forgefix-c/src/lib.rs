@@ -1,6 +1,9 @@
 use forgefix::fix::encode::SerializedInt;
-use forgefix::fix::generated::Tags;
-use forgefix::{SessionSettingsBuilder, SessionSettings, ApplicationError, FixApplicationHandle, FixApplicationInitiator};
+use forgefix::fix::fields::Tags;
+use forgefix::{
+    ApplicationError, FixApplicationHandle, FixApplicationInitiator, SessionSettings,
+    SessionSettingsBuilder,
+};
 
 use std::ffi::{c_char, c_ulong, CStr};
 use std::net::SocketAddr;
@@ -19,7 +22,7 @@ pub enum CFixError {
     SendMessageFailed,
     NullPointer,
     BadString,
-    SettingRequired, 
+    SettingRequired,
     Unknown,
 }
 
@@ -110,9 +113,11 @@ pub struct BlockingFixApplicationClient {
 
 impl BlockingFixApplicationClient {
     #[allow(clippy::too_many_arguments)]
-    pub fn build(settings: SessionSettings) -> Result<BlockingFixApplicationClient, ApplicationError> {
+    pub fn build(
+        settings: SessionSettings,
+    ) -> Result<BlockingFixApplicationClient, ApplicationError> {
         let fix_app_initiator = FixApplicationInitiator::build(settings)?;
-        let (inner, mut event_receiver) = fix_app_initiator.initiate_sync()?; 
+        let (inner, mut event_receiver) = fix_app_initiator.initiate_sync()?;
         event_receiver.close();
 
         Ok(BlockingFixApplicationClient { inner })
@@ -237,10 +242,10 @@ pub unsafe extern "C" fn message_builder_free(builder: message_builder_t) {
 }
 
 #[allow(non_camel_case_types)]
-pub type session_settings_t = *mut SessionSettings; 
+pub type session_settings_t = *mut SessionSettings;
 
 #[allow(non_camel_case_types)]
-pub type session_settings_builder_t = *mut SessionSettingsBuilder; 
+pub type session_settings_builder_t = *mut SessionSettingsBuilder;
 
 #[no_mangle]
 pub extern "C" fn session_settings_builder_new() -> session_settings_builder_t {
@@ -304,7 +309,7 @@ pub unsafe extern "C" fn ssb_set_socket_addr(
         .and_then(|s| s.parse::<SocketAddr>().ok())
     {
         Some(a) => a,
-        None => return CFixError::BadString, 
+        None => return CFixError::BadString,
     };
     (*builder).set_socket_addr(addr);
     CFixError::OK
@@ -316,7 +321,7 @@ pub unsafe extern "C" fn ssb_set_socket_addr(
 #[no_mangle]
 pub unsafe extern "C" fn ssb_set_begin_string(
     builder: session_settings_builder_t,
-    begin_string: *const c_char, 
+    begin_string: *const c_char,
 ) -> CFixError {
     if builder.is_null() || begin_string.is_null() {
         return CFixError::NullPointer;
@@ -385,7 +390,7 @@ pub unsafe extern "C" fn ssb_set_log_dir(
         .to_str()
         .map(std::path::PathBuf::from)
     {
-        Ok(p) => p, 
+        Ok(p) => p,
         Err(_) => return CFixError::BadString,
     };
     (*builder).set_log_dir(log_dir);
@@ -401,7 +406,7 @@ pub unsafe extern "C" fn ssb_set_heartbeat_timeout(
     heartbeat_timeout: c_ulong,
 ) -> CFixError {
     if builder.is_null() {
-        return CFixError::NullPointer; 
+        return CFixError::NullPointer;
     }
     let heartbeat_timeout = Duration::from_secs(heartbeat_timeout);
     (*builder).set_heartbeat_timeout(heartbeat_timeout);
@@ -410,27 +415,27 @@ pub unsafe extern "C" fn ssb_set_heartbeat_timeout(
 
 /// # Safety
 ///
-/// The pointers should not be NULL and start_time_str should be a UTC time in format `HH:MM:SS`. 
+/// The pointers should not be NULL and start_time_str should be a UTC time in format `HH:MM:SS`.
 #[no_mangle]
 pub unsafe extern "C" fn ssb_set_start_time(
     builder: session_settings_builder_t,
     start_time_str: *const c_char,
 ) -> CFixError {
     if builder.is_null() | start_time_str.is_null() {
-        return CFixError::NullPointer; 
+        return CFixError::NullPointer;
     }
 
     let start_time_str = match CStr::from_ptr(start_time_str).to_str() {
         Ok(s) => s,
-        Err(_) => return CFixError::BadString, 
-    }; 
+        Err(_) => return CFixError::BadString,
+    };
 
     let start_time = match chrono::naive::NaiveTime::parse_from_str(start_time_str, TIME_FORMAT) {
         Ok(t) => t,
         Err(_) => return CFixError::BadString,
     };
 
-    (*builder).set_start_time(start_time); 
+    (*builder).set_start_time(start_time);
     CFixError::OK
 }
 
