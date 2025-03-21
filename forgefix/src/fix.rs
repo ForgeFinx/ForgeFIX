@@ -14,9 +14,7 @@ use thiserror::Error;
 
 use crate::fix::decode::{parse_field, parse_sending_time};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
-use crate::fix::generated::{
-    is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags,
-};
+use crate::fix::fields::{is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags};
 use crate::fix::log::{FileLogger, Logger};
 use crate::fix::resend::Transformer;
 use crate::fix::session::{Event, MyStateMachine};
@@ -25,8 +23,8 @@ use crate::fix::validate::validate_msg;
 use crate::{FixEngineType, Request, SessionSettings};
 use store::Store;
 
-use generated::MsgType;
-use generated::MsgType::*;
+use fields::MsgType;
+use fields::MsgType::*;
 use mem::MsgBuf;
 
 use std::io;
@@ -35,7 +33,7 @@ use std::time::{Duration, Instant};
 
 pub mod decode;
 pub mod encode;
-pub mod generated;
+pub mod fields;
 pub mod mem;
 
 mod checksum;

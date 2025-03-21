@@ -358,7 +358,7 @@ impl SessionSettings {
 /// use forgefix::{
 ///     SessionSettings, FixApplicationInitiator, ApplicationError
 /// };
-/// use forgefix::fix::{encode::MessageBuilder, generated::MsgType};
+/// use forgefix::fix::{encode::MessageBuilder, fields::MsgType};
 /// # use anyhow::Result;
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {

@@ -1,5 +1,5 @@
 use crate::fix::encode::{MessageBuilder, SerializedInt};
-use crate::fix::generated::{GapFillFlag, MsgType, PossDupFlag, SessionRejectReason, Tags};
+use crate::fix::fields::{GapFillFlag, MsgType, PossDupFlag, SessionRejectReason, Tags};
 use crate::fix::{GarbledMessageType, SessionError};
 use crate::SessionSettings;
 use std::collections::VecDeque;

@@ -23,7 +23,7 @@
 //! field. FIX values are Utf8 encoded and have one of the following types: int, float, String,
 //! char or data (see [FIX dictionary] for more info). Furthermore, for some fields, only a subset
 //! of values for the type are considered valid. These are called value sets for that field. All
-//! value sets are represented by enums in the [generated] module.
+//! value sets are represented by enums in the [fields] module.
 //!
 //! * `SOH` -- The character that delimits the fields in a message. An SOH is represented with ascii
 //! code 1. For displaying, a `|` is often used to show an SOH. In rust, an SOH is represented as a
@@ -53,15 +53,15 @@
 //!
 //! [`MsgBuf`]: crate::fix::mem::MsgBuf
 //! [FIX dictionary]: https://btobits.com/fixopaedia/fixdic42/index.html
-//! [`Tags`]: crate::fix::generated::Tags
-//! [generated]: crate::fix::generated
+//! [`Tags`]: crate::fix::fields::Tags
+//! [fields]: crate::fix::fields
 //!
 //! # Example
 //!
 //! ```no_run
 //! use anyhow::{Error, bail, Result};
 //! use forgefix::fix::decode::{ParserCallback, parse_field, parse, MessageParseError};
-//! use forgefix::fix::generated::{Tags, MsgType, ExecType, OrdStatus};
+//! use forgefix::fix::fields::{Tags, MsgType, ExecType, OrdStatus};
 //!
 //! #[derive(Debug)]
 //! struct ExecutionReportParser<'a> {
@@ -155,7 +155,7 @@
 //! }
 //! ```
 
-use crate::fix::generated::{get_data_ref, Tags};
+use crate::fix::fields::{get_data_ref, Tags};
 use crate::fix::{GarbledMessageType, SessionError};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use lazy_static::lazy_static;
@@ -555,19 +555,19 @@ pub(super) fn parse_peeked_prefix(peeked: &[u8]) -> result::Result<ParsedPeek, S
 ///
 /// # Value Sets
 ///
-/// All FIX value sets are implemented as enums in the `generated` module. To convert a value into
+/// All FIX value sets are implemented as enums in the `fields` module. To convert a value into
 /// its enum, first convert to the corresponding primitive ([`char`] or [`u8`]). And then
 /// all enums `impl` [`TryFrom`] for either [`char`] or [`u8`].
 ///
 ///
 /// [`FromStr`]: std::str::FromStr
-/// [`MsgType`]: crate::fix::generated::MsgType
+/// [`MsgType`]: crate::fix::fields::MsgType
 /// [`from_utf8`]: std::str::from_utf8
 ///
 /// # Example
 ///
 /// ```rust
-/// # use forgefix::fix::generated::{EncryptMethod, OrdStatus, MsgType};
+/// # use forgefix::fix::fields::{EncryptMethod, OrdStatus, MsgType};
 /// # use forgefix::fix::decode::parse_field;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///

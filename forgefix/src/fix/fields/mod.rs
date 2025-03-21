@@ -1,7 +1,7 @@
 //! FIX [`Tags`], [`MsgType`], and values.
 
-mod fields;
-pub use fields::*;
+mod generated;
+pub use generated::*;
 impl MsgType {
     pub fn is_session(&self) -> bool {
         matches!(

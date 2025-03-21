@@ -9,22 +9,22 @@
 //! * [`SerializedInt`] for integer values
 //! * `b"..."` for ASCII fields like text and floats (see [FIX dictionary])
 //!
-//! [generated enums]: crate::fix::generated
-//! [`Tags`]: ../generated/enum.Tags.html
-//! [`MsgType`]: ../generated/enum.MsgType.html
+//! [generated enums]: crate::fix::fields
+//! [`Tags`]: ../fields/enum.Tags.html
+//! [`MsgType`]: ../fields/enum.MsgType.html
 //! [FIX dictionary]: https://btobits.com/fixopaedia/fixdic42/index.html
 //!
 //! ## Example
 //! ```rust
 //! use forgefix::fix::encode::{MessageBuilder, SerializedInt};
-//! use forgefix::fix::generated::{self, MsgType, Tags};
+//! use forgefix::fix::fields::{self, MsgType, Tags};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE.into())
 //!     .push(Tags::Account, b"my-account-num")
 //!     .push(Tags::OrderQty, SerializedInt::from(1u32).as_bytes())
-//!     .push(Tags::OrdType, generated::OrdType::LIMIT.into())
+//!     .push(Tags::OrdType, fields::OrdType::LIMIT.into())
 //!     .push(Tags::Price, b"10.42")
 //!     .push(Tags::Symbol, b"TICKER SYMBOL");
 //!
@@ -33,7 +33,7 @@
 //! ```
 
 use crate::fix::checksum::AsyncChecksumWriter;
-use crate::fix::generated::Tags;
+use crate::fix::fields::Tags;
 use crate::SessionSettings;
 use chrono::{DateTime, Utc};
 use std::io::{Cursor, Write};
@@ -68,14 +68,14 @@ pub fn formatted_time() -> String {
 /// ## Example
 /// ```rust
 /// use forgefix::fix::encode::{MessageBuilder, SerializedInt};
-/// use forgefix::fix::generated::{self, MsgType, Tags};
+/// use forgefix::fix::fields::{self, MsgType, Tags};
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let mut builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE.into())
 ///     .push(Tags::Account, b"my-account-num")
 ///     .push(Tags::OrderQty, SerializedInt::from(1u32).as_bytes())
-///     .push(Tags::OrdType, generated::OrdType::LIMIT.into())
+///     .push(Tags::OrdType, fields::OrdType::LIMIT.into())
 ///     .push(Tags::Price, b"10.42");
 ///
 /// builder.push_mut(Tags::Symbol, b"TICKER SYMBOL");
@@ -98,7 +98,7 @@ impl MessageBuilder {
     /// Creates a new [`MessageBuilder`] with `begin_string` and `msg_type`. It is helpful to use
     /// [`MsgType`] variants for `msg_type`.
     ///
-    /// [`MsgType`]: ../generated/enum.MsgType.html
+    /// [`MsgType`]: ../fields/enum.MsgType.html
     pub fn new(begin_string: &str, msg_type: char) -> Self {
         let mut writer = Cursor::new([0_u8; 32]);
         writer
@@ -120,7 +120,7 @@ impl MessageBuilder {
     /// Adds the following `tag_param`/`value` pair to the message. It is helpful to use [`Tags`]
     /// with this function for `tag_param`.
     ///
-    /// [`Tags`]: ../generated/enum.Tags.html
+    /// [`Tags`]: ../fields/enum.Tags.html
     pub fn push(mut self, tag_param: impl Into<u32>, value: &[u8]) -> Self {
         self.push_mut(tag_param, value);
         self
@@ -324,7 +324,7 @@ mod test {
         let b: MessageBuilder = MessageBuilder::new("FIX.4.2", 'Q');
         b.push(
             44u32,
-            crate::fix::generated::TimeInForce::GOOD_TILL_CANCEL.into(),
+            crate::fix::fields::TimeInForce::GOOD_TILL_CANCEL.into(),
         );
     }
 
