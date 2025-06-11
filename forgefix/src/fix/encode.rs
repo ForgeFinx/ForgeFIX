@@ -21,7 +21,7 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE.into())
+//! let builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE)
 //!     .push(Tags::Account, b"my-account-num")
 //!     .push(Tags::OrderQty, SerializedInt::from(1u32).as_bytes())
 //!     .push(Tags::OrdType, fields::OrdType::LIMIT.into())
@@ -32,9 +32,9 @@
 //! # }
 //! ```
 
+use crate::SessionSettings;
 use crate::fix::checksum::AsyncChecksumWriter;
 use crate::fix::fields::Tags;
-use crate::SessionSettings;
 use chrono::{DateTime, Utc};
 use std::io::{Cursor, Write};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
@@ -72,7 +72,7 @@ pub fn formatted_time() -> String {
 ///
 /// # #[tokio::main]
 /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// let mut builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE.into())
+/// let mut builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE)
 ///     .push(Tags::Account, b"my-account-num")
 ///     .push(Tags::OrderQty, SerializedInt::from(1u32).as_bytes())
 ///     .push(Tags::OrdType, fields::OrdType::LIMIT.into())
@@ -99,7 +99,7 @@ impl MessageBuilder {
     /// [`MsgType`] variants for `msg_type`.
     ///
     /// [`MsgType`]: ../fields/enum.MsgType.html
-    pub fn new(begin_string: &str, msg_type: char) -> Self {
+    pub fn new(begin_string: &str, msg_type: impl Into<char>) -> Self {
         let mut writer = Cursor::new([0_u8; 32]);
         writer
             .write_fmt(format_args!("8={}\x019=", begin_string))
@@ -108,7 +108,7 @@ impl MessageBuilder {
 
         MessageBuilder {
             preamble: writer,
-            msg_type,
+            msg_type: msg_type.into(),
             main_buffer,
         }
     }

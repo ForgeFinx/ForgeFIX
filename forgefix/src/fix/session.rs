@@ -1,10 +1,10 @@
+use crate::SessionSettings;
 use crate::fix::encode::{MessageBuilder, SerializedInt};
 use crate::fix::fields::{GapFillFlag, MsgType, PossDupFlag, SessionRejectReason, Tags};
 use crate::fix::{GarbledMessageType, SessionError};
-use crate::SessionSettings;
 use std::collections::VecDeque;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 use tokio::sync::oneshot;
 
 enum Response {
@@ -185,10 +185,9 @@ impl MyStateMachine {
                 None
             } else if expected < incoming {
                 self.rereceive_range = Some((expected, incoming));
-                let message =
-                    MessageBuilder::new(&self.begin_string, MsgType::RESEND_REQUEST.into())
-                        .push(Tags::BeginSeqNo, SerializedInt::from(expected).as_bytes())
-                        .push(Tags::EndSeqNo, SerializedInt::from(0u32).as_bytes());
+                let message = MessageBuilder::new(&self.begin_string, MsgType::RESEND_REQUEST)
+                    .push(Tags::BeginSeqNo, SerializedInt::from(expected).as_bytes())
+                    .push(Tags::EndSeqNo, SerializedInt::from(0u32).as_bytes());
                 self.outbox_push(message);
                 Some(Response::Transition(State::ExpectingResends {
                     return_state: Arc::new(return_state),
@@ -253,13 +252,13 @@ impl MyStateMachine {
                 Response::Transition(State::End)
             }
             Event::SendTestRequest(_) => {
-                let builder = MessageBuilder::new(&self.begin_string, MsgType::TEST_REQUEST.into())
+                let builder = MessageBuilder::new(&self.begin_string, MsgType::TEST_REQUEST)
                     .push(Tags::TestReqID, b"TEST");
                 self.outbox_push(builder);
                 Response::Transition(State::ExpectingTestResponse)
             }
             Event::SendHeartbeat => {
-                let builder = MessageBuilder::new(&self.begin_string, MsgType::HEARTBEAT.into());
+                let builder = MessageBuilder::new(&self.begin_string, MsgType::HEARTBEAT);
                 self.outbox_push(builder);
                 Response::Handled
             }
@@ -359,7 +358,7 @@ impl MyStateMachine {
             }
             Event::TestRequestReceived { test_req_id, .. } => {
                 let builder: MessageBuilder =
-                    MessageBuilder::new(&self.begin_string, MsgType::HEARTBEAT.into())
+                    MessageBuilder::new(&self.begin_string, MsgType::HEARTBEAT)
                         .push(Tags::TestReqID, test_req_id);
                 self.outbox_push(builder);
                 Response::Handled
@@ -405,7 +404,7 @@ impl MyStateMachine {
         match event {
             Event::Connect(reset_seq_num) => {
                 let mut builder: MessageBuilder =
-                    MessageBuilder::new(&self.begin_string, MsgType::LOGON.into())
+                    MessageBuilder::new(&self.begin_string, MsgType::LOGON)
                         .push(Tags::EncryptMethod, b"0")
                         .push(Tags::HeartBtInt, 30.to_string().as_bytes());
                 if *reset_seq_num {
@@ -458,7 +457,7 @@ impl MyStateMachine {
                     return Response::Transition(State::Error);
                 }
                 let mut builder: MessageBuilder =
-                    MessageBuilder::new(&self.begin_string, MsgType::LOGON.into())
+                    MessageBuilder::new(&self.begin_string, MsgType::LOGON)
                         .push(Tags::EncryptMethod, b"0")
                         .push(
                             Tags::HeartBtInt,
@@ -565,11 +564,11 @@ pub(super) fn in_error_state(state_machine: &MyStateMachine) -> bool {
 }
 
 pub(super) fn build_logout_message_with_text(begin_string: &str, text: &[u8]) -> MessageBuilder {
-    MessageBuilder::new(begin_string, MsgType::LOGOUT.into()).push(Tags::Text, text)
+    MessageBuilder::new(begin_string, MsgType::LOGOUT).push(Tags::Text, text)
 }
 
 pub(super) fn build_logout_message(begin_string: &str) -> MessageBuilder {
-    MessageBuilder::new(begin_string, MsgType::LOGOUT.into())
+    MessageBuilder::new(begin_string, MsgType::LOGOUT)
 }
 
 fn build_message_reject(
@@ -579,7 +578,7 @@ fn build_message_reject(
     ref_tag_id: &Option<u32>,
     ref_msg_type: &Option<char>,
 ) -> MessageBuilder {
-    let mut builder: MessageBuilder = MessageBuilder::new("FIX.4.2", MsgType::REJECT.into())
+    let mut builder: MessageBuilder = MessageBuilder::new("FIX.4.2", MsgType::REJECT)
         .push(
             Tags::RefSeqNum,
             SerializedInt::from(*msg_seq_num).as_bytes(),

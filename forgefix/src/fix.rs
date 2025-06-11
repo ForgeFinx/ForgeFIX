@@ -9,12 +9,12 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use thiserror::Error;
 
 use crate::fix::decode::{parse_field, parse_sending_time};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
-use crate::fix::fields::{is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags};
+use crate::fix::fields::{GapFillFlag, PossDupFlag, SessionRejectReason, Tags, is_session_message};
 use crate::fix::log::{FileLogger, Logger};
 use crate::fix::resend::Transformer;
 use crate::fix::session::{Event, MyStateMachine};
@@ -741,7 +741,7 @@ async fn build_gap_fill_msg(
     new_seq_num: u32,
     additional_headers: &AdditionalHeaders,
 ) -> Result<MsgBuf, SessionError> {
-    let builder = MessageBuilder::new("FIX.4.2", MsgType::SEQUENCE_RESET.into())
+    let builder = MessageBuilder::new("FIX.4.2", MsgType::SEQUENCE_RESET)
         .push(Tags::NewSeqNo, SerializedInt::from(new_seq_num).as_bytes())
         .push(Tags::GapFillFlag, b"Y");
     let msg = build_message_with_headers(builder, msg_seq_num, additional_headers).await?;
