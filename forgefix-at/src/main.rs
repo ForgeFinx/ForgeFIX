@@ -2,7 +2,7 @@ use clap::{Parser, ValueHint};
 use forgefix::fix::decode::parse_field;
 use forgefix::fix::fields::{MsgType, Tags};
 use forgefix::{
-    fix, FixApplicationAcceptor, FixApplicationHandle, FixApplicationInitiator, SessionSettings,
+    FixApplicationAcceptor, FixApplicationHandle, FixApplicationInitiator, SessionSettings, fix,
 };
 use std::error::Error;
 use std::net::SocketAddr;
@@ -217,7 +217,7 @@ async fn send_order(
     let qty = fix::encode::SerializedInt::from(qty);
     let transact_time = fix::encode::formatted_time();
 
-    let builder = fix::encode::MessageBuilder::new(&fix_app_client.begin_string(), msg_type.into())
+    let builder = fix::encode::MessageBuilder::new(&fix_app_client.begin_string(), msg_type)
         .push(Tags::Account, account.as_bytes())
         .push(Tags::ClOrdID, sguid.as_bytes())
         .push(Tags::IDSource, ID_SOURCE.as_bytes())
