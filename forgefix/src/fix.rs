@@ -9,13 +9,13 @@ use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use thiserror::Error;
 
 use crate::fix::decode::{parse_field, parse_sending_time};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
 use crate::fix::generated::{
-    is_session_message, GapFillFlag, PossDupFlag, SessionRejectReason, Tags,
+    GapFillFlag, PossDupFlag, SessionRejectReason, Tags, is_session_message,
 };
 use crate::fix::log::{FileLogger, Logger};
 use crate::fix::resend::Transformer;
@@ -607,13 +607,11 @@ async fn disconnect(
     mut logger: FileLogger,
 ) -> Result<()> {
     request_receiver.close();
-    store
-        .set_sequences(
-            epoch,
-            state_machine.sequences.peek_outgoing(),
-            state_machine.sequences.peek_incoming(),
-        )
-        .await?;
+    store.set_sequences(
+        epoch,
+        state_machine.sequences.peek_outgoing(),
+        state_machine.sequences.peek_incoming(),
+    )?;
     store.disconnect().await?;
     logger.disconnect().await?;
     stream::disconnect(stream).await;

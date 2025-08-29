@@ -1,7 +1,7 @@
 use anyhow::Result;
 
-use crate::fix::mem::MsgBuf;
 use crate::SessionSettings;
+use crate::fix::mem::MsgBuf;
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -14,11 +14,9 @@ use tokio::sync::{mpsc, oneshot};
 
 const SQL_ENTER_WAL_MODE: &str = "PRAGMA journal_mode=WAL;";
 const SQL_VACUUM: &str = "VACUUM;";
-const SQL_CREATE_INCOMING_TABLE :&str="CREATE TABLE IF NOT EXISTS incoming_messages (key INTEGER PRIMARY KEY AUTOINCREMENT, epoch_guid VARCHAR, msg_seq_num INT, message BLOB);";
-const SQL_CREATE_OUTGOING_TABLE :&str=
-    "CREATE TABLE IF NOT EXISTS outgoing_messages (key INTEGER PRIMARY KEY AUTOINCREMENT, epoch_guid VARCHAR, msg_seq_num INT, send_time VARCHAR, message BLOB);";
-const SQL_CREATE_SEQUENCES: &str =
-    "CREATE TABLE IF NOT EXISTS sequences (epoch_guid VARCHAR, next_incoming INTEGER, next_outgoing INTEGER)";
+const SQL_CREATE_INCOMING_TABLE: &str = "CREATE TABLE IF NOT EXISTS incoming_messages (key INTEGER PRIMARY KEY AUTOINCREMENT, epoch_guid VARCHAR, msg_seq_num INT, message BLOB);";
+const SQL_CREATE_OUTGOING_TABLE: &str = "CREATE TABLE IF NOT EXISTS outgoing_messages (key INTEGER PRIMARY KEY AUTOINCREMENT, epoch_guid VARCHAR, msg_seq_num INT, send_time VARCHAR, message BLOB);";
+const SQL_CREATE_SEQUENCES: &str = "CREATE TABLE IF NOT EXISTS sequences (epoch_guid VARCHAR, next_incoming INTEGER, next_outgoing INTEGER)";
 const SQL_ENSURE_SEQUENCE_ROW: &str = "INSERT INTO sequences(epoch_guid, next_incoming, next_outgoing) SELECT ?1,1,1 WHERE NOT EXISTS (SELECT * FROM sequences WHERE epoch_guid = ?1);";
 const SQL_INSERT_OUTGOING_MESSAGE: &str =
     "INSERT INTO outgoing_messages (epoch_guid, msg_seq_num, send_time, message) VALUES (?,?,?,?)";
@@ -37,7 +35,7 @@ enum StoreRequest {
         oneshot::Sender<Result<Vec<(u32, Vec<u8>)>>>,
     ),
     GetSequences(Arc<String>, oneshot::Sender<Result<(u32, u32)>>),
-    SetSequences(Arc<String>, u32, u32, oneshot::Sender<Result<()>>),
+    SetSequences(Arc<String>, u32, u32),
     LastSendTime(Arc<String>, oneshot::Sender<Result<Option<DateTime<Utc>>>>),
     Disconnect(oneshot::Sender<Result<()>>),
 }
@@ -77,9 +75,8 @@ impl Store {
                         let resp = get_sequences(&conn, &epoch);
                         let _ = sender.send(resp);
                     }
-                    StoreRequest::SetSequences(epoch, outgoing, incoming, sender) => {
+                    StoreRequest::SetSequences(epoch, outgoing, incoming) => {
                         let resp = set_sequences(&conn, &epoch, outgoing, incoming);
-                        let _ = sender.send(resp);
                     }
                     StoreRequest::LastSendTime(epoch, sender) => {
                         let resp = last_send_time(&conn, &epoch);
@@ -130,16 +127,14 @@ impl Store {
         receiver.await?
     }
 
-    pub async fn set_sequences(
+    pub fn set_sequences(
         &self,
         epoch: Arc<String>,
         next_outgoing: u32,
         next_incoming: u32,
     ) -> Result<()> {
-        let (sender, receiver) = oneshot::channel();
-        let req = StoreRequest::SetSequences(epoch, next_outgoing, next_incoming, sender);
+        let req = StoreRequest::SetSequences(epoch, next_outgoing, next_incoming);
         self.sender.send(req)?;
-        let _ = receiver.await?;
         Ok(())
     }
 

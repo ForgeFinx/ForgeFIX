@@ -1,8 +1,8 @@
-use crate::fix::mem::MsgBuf;
 use crate::SessionSettings;
+use crate::fix::mem::MsgBuf;
 use anyhow::Result;
-use chrono::offset::Utc;
 use chrono::DateTime;
+use chrono::offset::Utc;
 
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -79,7 +79,7 @@ impl Store {
         Ok(prev_messages)
     }
 
-    pub async fn set_sequences(
+    pub fn set_sequences(
         &self,
         _epoch: Arc<String>,
         next_outgoing: u32,
