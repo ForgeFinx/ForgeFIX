@@ -595,6 +595,15 @@ async fn handle_msg(
             state_machine.handle(&Event::SessionErrorReceived { error });
         }
     }
+
+    store
+        .set_sequences(
+            Arc::clone(&settings.epoch),
+            state_machine.sequences.peek_outgoing(),
+            state_machine.sequences.peek_incoming(),
+        )
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
     Ok(())
 }
 
@@ -657,6 +666,14 @@ async fn send_outgoing_messages(
         let msg_seq_num = state_machine.sequences.next_outgoing();
         let msg_buf = build_message_with_headers(msg, msg_seq_num, additional_headers).await?;
         stream::send_message(&msg_buf, stream, logger).await?;
+
+        store
+            .set_sequences(
+                Arc::clone(&epoch),
+                state_machine.sequences.peek_outgoing(),
+                state_machine.sequences.peek_incoming(),
+            )
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
 
         store
             .store_outgoing(

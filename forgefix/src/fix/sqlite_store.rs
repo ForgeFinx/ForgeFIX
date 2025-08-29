@@ -76,7 +76,9 @@ impl Store {
                         let _ = sender.send(resp);
                     }
                     StoreRequest::SetSequences(epoch, outgoing, incoming) => {
-                        let resp = set_sequences(&conn, &epoch, outgoing, incoming);
+                        if let Err(e) = set_sequences(&conn, &epoch, outgoing, incoming) {
+                            eprintln!("{e}: error setting sequence numbers");
+                        }
                     }
                     StoreRequest::LastSendTime(epoch, sender) => {
                         let resp = last_send_time(&conn, &epoch);
