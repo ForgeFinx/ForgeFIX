@@ -6,6 +6,7 @@ description = "ForgeFIX is an opinionated FIX 4.2 client library for the buy-sid
 license-file = "LICENSE"
 repository = "https://github.com/ForgeFinx/ForgeFIX/"
 readme = "../README.md"
+keywords = ["fix", "finance", "client", "protocol", "fast"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
