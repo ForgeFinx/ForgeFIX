@@ -23,7 +23,7 @@
 //! ### Asynchronous API
 //! ```no_run
 //! use forgefix::{
-//!     SessionSettings, FixApplicationHandle, FixApplicationInitiator, ApplicationError,
+//!     ApplicationError, SessionSettings, EngineFactory, EngineHandle,
 //! };
 //!
 //! #[tokio::main]
@@ -39,8 +39,8 @@
 //!         .build()?;
 //!
 //!     // create a FIX engine and intiate TCP connection
-//!     let (fix_handle, mut event_receiver) = FixApplicationInitiator::build(settings)?
-//!         .initiate()
+//!     let (handle, mut event_receiver) = EngineFactory::initiator(settings)?
+//!         .connect()
 //!         .await?;
 //!
 //!     // handle incoming messages in the background...
@@ -51,12 +51,12 @@
 //!     });
 //!
 //!     // start the FIX connection
-//!     fix_handle.start_async().await?;
+//!     handle.start_async().await?;
 //!
 //!     // send messages here...
 //!
 //!     // end the FIX connection
-//!     fix_handle.end_async().await?;
+//!     handle.end_async().await?;
 //!
 //!     Ok(())
 //! }
@@ -65,7 +65,7 @@
 //! ### Synchronous API*
 //! ```no_run
 //! use forgefix::{
-//!     SessionSettings, FixApplicationHandle, FixApplicationInitiator, ApplicationError,
+//!     ApplicationError, SessionSettings, EngineFactory, EngineHandle,
 //! };
 //!
 //! fn main() -> Result<(), ApplicationError> {
@@ -78,8 +78,8 @@
 //!         .with_socket_addr("127.0.0.1:0".parse().unwrap())
 //!         .build()?;
 //!
-//!     let (fix_handle, mut event_receiver) = FixApplicationInitiator::build(settings)?
-//!         .initiate_sync()?;
+//!     let (handle, mut event_receiver) = EngineFactory::initiator(settings)?
+//!         .connect_sync()?;
 //!
 //!     std::thread::spawn(move || {
 //!         while let Some(msg) = event_receiver.blocking_recv() {
@@ -87,17 +87,17 @@
 //!         }
 //!     });
 //!
-//!     fix_handle.start_sync()?;
+//!     handle.start_sync()?;
 //!
 //!     // send messages here...
 //!
-//!     fix_handle.end_sync()?;
+//!     handle.end_sync()?;
 //!     
 //!     Ok(())
 //! }
 //! ```
 //! *When using synchronous API, a tokio runtime is still created internally (see
-//! [`FixApplicationInitiator`])
+//! [`EngineFactory::connect_sync`])
 //!
 //! ## Feature Flags
 //!
@@ -109,6 +109,7 @@ pub mod fix;
 use fix::encode::MessageBuilder;
 use fix::mem::MsgBuf;
 
+use std::io;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -156,7 +157,6 @@ pub enum ApplicationError {
 #[derive(Clone)]
 pub struct SessionSettings {
     begin_string: Arc<String>,
-    engine_type: FixEngineType,
     sender_comp_id: String,
     target_comp_id: String,
     addr: SocketAddr,
@@ -300,7 +300,6 @@ impl SessionSettingsBuilder {
             .ok_or(ApplicationError::SettingRequired("log_dir".to_string()))?;
 
         Ok(SessionSettings {
-            engine_type: FixEngineType::Client,
             begin_string: Arc::new(self.begin_string.unwrap_or(String::from("FIX.4.2"))),
             epoch: Arc::new(
                 self.epoch
@@ -334,7 +333,7 @@ impl SessionSettings {
 
 /// A handle on a FIX engine instance.
 ///
-/// The [`FixApplicationHandle`] allows for requesting the basic operations of starting the FIX connection, sending
+/// The [`EngineHandle`] allows for requesting the basic operations of starting the FIX connection, sending
 /// a message to the peer, and ending the connection.
 ///
 /// The handle offers asynchronous and synchronous APIs for these operations. As well as functions
@@ -345,18 +344,18 @@ impl SessionSettings {
 /// attempt an operation, will you learn the engine has stopped by receiving an
 /// [`ApplicationError::SessionEnded`].
 ///
-/// [`FixApplicationHandle`] `impl`'s [`Clone`], [`Send`] and [`Sync`] and therefore multiple
+/// [`EngineHandle`] `impl`'s [`Clone`], [`Send`] and [`Sync`] and therefore multiple
 /// copies of the handle can be made and passed to different threads that can all request messages
 /// to be sent. Only one thread has to call [`end`] for the engine to terminate the connection.
 ///
 /// [`oneshot::Receiver`]: https://docs.rs/tokio/latest/tokio/sync/oneshot/struct.Receiver.html
-/// [`end`]: FixApplicationHandle::end
+/// [`end`]: EngineHandle::end
 ///
 /// # Example - Multiple Threads
 ///
 ///```no_run
 /// use forgefix::{
-///     SessionSettings, FixApplicationInitiator, ApplicationError
+///     SessionSettings, EngineFactory, ApplicationError
 /// };
 /// use forgefix::fix::{encode::MessageBuilder, generated::MsgType};
 /// # use anyhow::Result;
@@ -370,16 +369,16 @@ impl SessionSettings {
 /// #        .with_socket_addr("127.0.0.1:0".parse().unwrap())
 /// #        .build()?;
 ///
-/// let (handle, mut receiver) = FixApplicationInitiator::build(settings)?
-///     .initiate()
+/// let (handle, mut receiver) = EngineFactory::initiator(settings)?
+///     .connect()
 ///     .await?;
 /// receiver.close();
 ///
-/// // FixApplicationHandle can be cloned
+/// // EngineHandle can be cloned
 /// let handle1 = handle.clone();
 /// let handle2 = handle.clone();
 ///
-/// // FixApplicationHandle clones can be sent across threads and tasks
+/// // EngineHandle clones can be sent across threads and tasks
 /// let h1 = tokio::spawn(async move {
 ///
 ///     // thread logic here...
@@ -414,12 +413,12 @@ impl SessionSettings {
 ///
 ///```
 #[derive(Clone)]
-pub struct FixApplicationHandle {
+pub struct EngineHandle {
     request_sender: mpsc::UnboundedSender<Request>,
     begin_string: Arc<String>,
 }
 
-impl FixApplicationHandle {
+impl EngineHandle {
     /// Send a request to the engine to start the connection and return immediately.
     ///
     /// The receiver will eventually yield `true` if a connection was successfully established, or
@@ -534,170 +533,16 @@ impl FixApplicationHandle {
     }
 }
 
-/// A struct that can initiate the TCP connection to the peer and create a FIX engine instance.
-pub struct FixApplicationInitiator {
-    settings: SessionSettings,
-    stream_factory: StreamFactory,
-}
-
-impl FixApplicationInitiator {
-    /// Build a `FixApplicationInitiator` that will create a FIX engine using `settings`.
-    #[allow(clippy::too_many_arguments)]
-    pub fn build(
-        mut settings: SessionSettings,
-    ) -> Result<FixApplicationInitiator, ApplicationError> {
-        settings.engine_type = FixEngineType::Client;
-        let stream_factory = StreamFactory::build(&settings)?;
-        let fix_app_client = FixApplicationInitiator {
-            settings,
-            stream_factory,
-        };
-        Ok(fix_app_client)
-    }
-
-    /// Initiate a TCP connection and start the FIX engine with the current asynchronous runtime.
-    ///
-    /// If the connection is successfully made, a [`FixApplicationHandle`] will be returned, and an
-    /// `UnboundedReceiver<Arc<MsgBuf>>` will be returned.
-    ///
-    /// The application handle can be used to start the FIX connection, send messages and end the
-    /// connection.
-    ///
-    /// The receiver is a channel where all incoming, valid application messages can be received.
-    /// If you do not want to use the channel, it is recommended you call [`close`].
-    ///
-    /// [`close`]: tokio::sync::mpsc::UnboundedReceiver::close
-    pub async fn initiate(
-        self,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
-        let stream = self.stream_factory.stream().await?;
-        let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
-        let (app_message_event_sender, app_message_event_receiver) =
-            mpsc::unbounded_channel::<Arc<MsgBuf>>();
-        let begin_string = Arc::clone(&self.settings.begin_string);
-
-        tokio::spawn(async move {
-            if let Err(e) = fix::spin_session(
-                stream,
-                request_receiver,
-                app_message_event_sender,
-                self.settings,
-            )
-            .await
-            {
-                eprintln!("{e:?}");
-            }
-        });
-
-        let handle = FixApplicationHandle {
-            request_sender,
-            begin_string,
-        };
-
-        Ok((handle, app_message_event_receiver))
-    }
-
-    /// Initiate a TCP connection and start the FIX engine that will be driven by `runtime`.
-    pub fn initiate_with_runtime(
-        self,
-        runtime: tokio::runtime::Runtime,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
-        let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
-        let (app_message_event_sender, app_message_event_receiver) =
-            mpsc::unbounded_channel::<Arc<MsgBuf>>();
-        let begin_string = Arc::clone(&self.settings.begin_string);
-        let stream = runtime.block_on(self.stream_factory.stream())?;
-
-        std::thread::spawn(move || {
-            if let Err(e) = runtime.block_on(fix::spin_session(
-                stream,
-                request_receiver,
-                app_message_event_sender,
-                self.settings,
-            )) {
-                eprintln!("{e:?}");
-            }
-        });
-        let handle = FixApplicationHandle {
-            request_sender,
-            begin_string,
-        };
-
-        Ok((handle, app_message_event_receiver))
-    }
-
-    /// Initiate a TCP connection, and a runtime will be created internally to drive the engine.
-    pub fn initiate_sync(
-        self,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()?;
-        self.initiate_with_runtime(runtime)
-    }
-}
-
-/// A struct that can accept TCP connections, and create a FIX engine instance for each connection.
-pub struct FixApplicationAcceptor {
-    settings: SessionSettings,
-    stream_factory: StreamFactory,
-}
-
-impl FixApplicationAcceptor {
-    /// Build a `FixApplicationAcceptor` from `settings`.
-    #[allow(clippy::too_many_arguments)]
-    pub fn build(
-        mut settings: SessionSettings,
-    ) -> Result<FixApplicationAcceptor, ApplicationError> {
-        settings.engine_type = FixEngineType::Server;
-        let stream_factory = StreamFactory::build(&settings)?;
-        let fix_app_server = FixApplicationAcceptor {
-            settings,
-            stream_factory,
-        };
-        Ok(fix_app_server)
-    }
-
-    /// Accept an incoming TCP connection and create a FIX engine.
-    ///
-    /// Returns the handle to the created engine, and a channel to receive all valid, incoming application
-    /// messages.
-    pub async fn accept(
-        &mut self,
-    ) -> Result<(FixApplicationHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError>
-    {
-        let stream = self.stream_factory.stream().await?;
-        let settings = self.settings.clone();
-        let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
-        let (app_message_event_sender, app_message_event_receiver) =
-            mpsc::unbounded_channel::<Arc<MsgBuf>>();
-        let begin_string = Arc::clone(&self.settings.begin_string);
-
-        tokio::task::spawn(async move {
-            if let Err(e) =
-                fix::spin_session(stream, request_receiver, app_message_event_sender, settings)
-                    .await
-            {
-                eprintln!("{e:?}");
-            }
-        });
-
-        let handle = FixApplicationHandle {
-            request_sender,
-            begin_string,
-        };
-
-        Ok((handle, app_message_event_receiver))
-    }
-}
-
 #[derive(Clone)]
 enum FixEngineType {
     Client,
     Server,
+}
+
+#[derive(Copy, Clone)]
+enum EngineKind {
+    Acceptor,
+    Initiator,
 }
 
 enum StreamFactory {
@@ -706,10 +551,10 @@ enum StreamFactory {
 }
 
 impl StreamFactory {
-    fn build(settings: &SessionSettings) -> Result<Self, std::io::Error> {
-        match settings.engine_type {
-            FixEngineType::Client => Ok(StreamFactory::Client(settings.addr)),
-            FixEngineType::Server => {
+    fn build(settings: &SessionSettings, typ: EngineKind) -> Result<Self, std::io::Error> {
+        match typ {
+            EngineKind::Initiator => Ok(StreamFactory::Client(settings.addr)),
+            EngineKind::Acceptor => {
                 let socket = TcpSocket::new_v4()?;
                 socket.bind(settings.addr)?;
                 let listener = socket.listen(1024)?;
@@ -717,6 +562,7 @@ impl StreamFactory {
             }
         }
     }
+
     async fn stream(&self) -> Result<TcpStream, std::io::Error> {
         match self {
             StreamFactory::Server(listener) => {
@@ -728,5 +574,131 @@ impl StreamFactory {
                 Ok(socket.connect(*addr).await?)
             }
         }
+    }
+}
+
+/// A struct that can establish a TCP connections to the peer and create FIX engine instances.
+///
+/// FIX engines come in two flavors: [initiator](EngineFactory::initiator) and [acceptor](EngineFactory::acceptor).
+/// An initiator creates the TCP connection and transmits the first `Logon<35=A>` message. An acceptor listens for incoming TCP
+/// connections and waits for the first `Logon<35=A>` message. See ([FIX spec]) for more details.
+///
+/// [FIX spec]: https://www.fixtrading.org/standards/fix-session-layer-online/
+pub struct EngineFactory {
+    typ: EngineKind,
+    settings: SessionSettings,
+    stream_factory: StreamFactory,
+}
+
+impl EngineFactory {
+    /// Build an `EngineFactory` that creates an acceptor FIX engine using settings
+    pub fn acceptor(settings: SessionSettings) -> Result<Self, ApplicationError> {
+        Self::build(settings, EngineKind::Acceptor)
+    }
+
+    /// Build an `EngineFactory` that creates an initiator FIX engine using settings
+    pub fn initiator(settings: SessionSettings) -> Result<Self, ApplicationError> {
+        Self::build(settings, EngineKind::Initiator)
+    }
+
+    fn build(settings: SessionSettings, typ: EngineKind) -> Result<Self, ApplicationError> {
+        let stream_factory = StreamFactory::build(&settings, typ)?;
+        Ok(Self {
+            settings,
+            stream_factory,
+            typ,
+        })
+    }
+
+    /// Establish a TCP connection and start the FIX engine with the current asynchronous runtime.
+    ///
+    /// If the connection is successfully established, an [`EngineHandle`] will be returned, and an
+    /// `UnboundedReceiver<Arc<MsgBuf>>` will be returned.
+    ///
+    /// The application handle can be used to start the FIX connection, send messages and end the
+    /// connection.
+    ///
+    /// The receiver is a channel where all incoming, valid application messages can be received.
+    /// If you do not want to use the channel, it is recommended you call [`close`].
+    ///
+    /// [`close`]: tokio::sync::mpsc::UnboundedReceiver::close
+    pub async fn connect(
+        &mut self,
+    ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
+        let stream = self.stream_factory.stream().await?;
+        let settings = self.settings.clone();
+
+        let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
+        let (app_message_event_sender, app_message_event_receiver) =
+            mpsc::unbounded_channel::<Arc<MsgBuf>>();
+
+        let begin_string = Arc::clone(&self.settings.begin_string);
+        let typ = self.typ;
+
+        tokio::task::spawn(async move {
+            if let Err(e) = fix::spin_session(
+                stream,
+                request_receiver,
+                app_message_event_sender,
+                settings,
+                typ,
+            )
+            .await
+            {
+                eprintln!("{e:?}");
+            }
+        });
+
+        let handle = EngineHandle {
+            request_sender,
+            begin_string,
+        };
+
+        Ok((handle, app_message_event_receiver))
+    }
+
+    /// Establish a TCP connection and start the FIX engine that will be driven by `runtime`.
+    pub fn connect_with_runtime(
+        &mut self,
+        runtime: tokio::runtime::Runtime,
+    ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
+        let stream = runtime.block_on(self.stream_factory.stream())?;
+        let settings = self.settings.clone();
+
+        let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
+        let (app_message_event_sender, app_message_event_receiver) =
+            mpsc::unbounded_channel::<Arc<MsgBuf>>();
+
+        let begin_string = Arc::clone(&self.settings.begin_string);
+        let typ = self.typ;
+
+        std::thread::spawn(move || {
+            if let Err(e) = runtime.block_on(fix::spin_session(
+                stream,
+                request_receiver,
+                app_message_event_sender,
+                settings,
+                typ,
+            )) {
+                eprintln!("{e:?}");
+            }
+        });
+
+        let handle = EngineHandle {
+            request_sender,
+            begin_string,
+        };
+
+        Ok((handle, app_message_event_receiver))
+    }
+
+    /// Establish a TCP connection, and a runtime will be created internally to drive the engine.
+    pub fn connect_sync(
+        &mut self,
+    ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?;
+        self.connect_with_runtime(runtime)
     }
 }

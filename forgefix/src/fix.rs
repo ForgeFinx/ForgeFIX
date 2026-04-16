@@ -302,6 +302,7 @@ pub(super) async fn spin_session(
     mut request_receiver: mpsc::UnboundedReceiver<Request>,
     message_received_event_sender: mpsc::UnboundedSender<Arc<MsgBuf>>,
     settings: SessionSettings,
+    typ: crate::EngineKind,
 ) -> Result<()> {
     // SETUP
 
@@ -313,13 +314,13 @@ pub(super) async fn spin_session(
 
     let logon_resp_sender = receive_logon_request(&mut request_receiver).await;
 
-    let start_new_session = is_new_session(&store, &settings).await?;
-    match settings.engine_type {
-        FixEngineType::Server => {
+    let start_new_session = is_new_session(&store, &settings, typ).await?;
+    match typ {
+        crate::EngineKind::Acceptor => {
             state_machine.set_logon_resp_sender(logon_resp_sender);
             state_machine.handle(&crate::fix::session::Event::Accept);
         }
-        FixEngineType::Client => {
+        crate::EngineKind::Initiator => {
             state_machine.set_logon_resp_sender(logon_resp_sender);
             state_machine.handle(&crate::fix::session::Event::Connect(start_new_session));
         }
@@ -781,8 +782,12 @@ fn to_poss_dup_flag(maybe_flag: Option<char>) -> Option<PossDupFlag> {
     maybe_flag.map(|f| PossDupFlag::try_from(f).unwrap_or(PossDupFlag::NO))
 }
 
-async fn is_new_session(store: &Store, settings: &SessionSettings) -> Result<bool> {
-    if matches!(settings.engine_type, FixEngineType::Server) {
+async fn is_new_session(
+    store: &Store,
+    settings: &SessionSettings,
+    engine_kind: crate::EngineKind,
+) -> Result<bool> {
+    if matches!(engine_kind, crate::EngineKind::Acceptor) {
         return Ok(false);
     }
     let last_send_time = store.last_send_time(settings.epoch.clone()).await?;

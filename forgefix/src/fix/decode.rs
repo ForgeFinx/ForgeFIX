@@ -123,7 +123,7 @@
 //!     }
 //! }
 //!
-//! # use forgefix::{SessionSettings, FixApplicationInitiator};
+//! # use forgefix::{SessionSettings, EngineFactory};
 //! #[tokio::main]
 //! async fn main() -> Result<()> {
 //!
@@ -136,8 +136,8 @@
 //! #        .with_log_dir("./log".into())
 //! #        .with_socket_addr("127.0.0.1:0".parse().unwrap())
 //! #        .build()?;
-//!     let (handle, mut receiver) = FixApplicationInitiator::build(settings)?
-//!         .initiate()
+//!     let (handle, mut receiver) = EngineFactory::initiator(settings)?
+//!         .connect()
 //!         .await?;
 //!
 //!     tokio::spawn(async move {
