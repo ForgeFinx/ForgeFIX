@@ -1,14 +1,15 @@
-use crate::fix::mem::MsgBuf;
-use crate::fix::SessionError;
 use crate::SessionSettings;
+use crate::fix::SessionError;
+use crate::fix::mem::MsgBuf;
 
 use chrono::offset::Local;
 use chrono::{DateTime, Duration};
 
-use tokio::fs::{File, OpenOptions};
-use tokio::io::AsyncWriteExt;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::oneshot;
 
+use std::fs::{File, OpenOptions};
+use std::io::{self, Write};
+use std::sync::mpsc;
 use std::time::Instant;
 
 use anyhow::Result;
@@ -17,21 +18,21 @@ const LOG_FILE_TYPE: &str = "txt";
 
 enum LoggerRequest {
     Log(String, Instant),
-    Disconnect(oneshot::Sender<Result<(), SessionError>>),
+    Disconnect(oneshot::Sender<Result<(), io::Error>>),
 }
 
 pub(super) struct FileLogger {
-    sender: mpsc::UnboundedSender<LoggerRequest>,
+    sender: mpsc::Sender<LoggerRequest>,
 }
 
 pub(super) trait Logger {
-    fn log_message(&mut self, msg: &MsgBuf) -> Result<(), SessionError>;
+    fn log_message(&mut self, msg: &MsgBuf) -> Result<(), io::Error>;
 }
 
 impl Logger for FileLogger {
-    fn log_message(&mut self, buf: &MsgBuf) -> Result<(), SessionError> {
+    fn log_message(&mut self, buf: &MsgBuf) -> Result<(), io::Error> {
         let req = LoggerRequest::Log(format!("{}", buf), Instant::now());
-        self.sender.send(req).map_err(to_io_err)?;
+        self.sender.send(req).map_err(io_err)?;
         Ok(())
     }
 }
@@ -42,22 +43,18 @@ impl FileLogger {
         let sendercompid = settings.expected_sender_comp_id();
         let targetcompid = settings.expected_target_comp_id();
         std::fs::create_dir_all(log_path)?;
-        let mut logs = OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(
-                log_path
-                    .join(format!("{}-{}", sendercompid, targetcompid))
-                    .with_extension(LOG_FILE_TYPE),
-            )
-            .await?;
+        let mut logs = OpenOptions::new().create(true).append(true).open(
+            log_path
+                .join(format!("{}-{}", sendercompid, targetcompid))
+                .with_extension(LOG_FILE_TYPE),
+        )?;
 
-        let (sender, mut receiver) = mpsc::unbounded_channel();
+        let (sender, mut receiver) = mpsc::channel();
 
-        tokio::spawn(async move {
+        tokio::task::spawn_blocking(move || {
             let begin_time = Local::now();
             let begin_instant = Instant::now();
-            while let Some(req) = receiver.recv().await {
+            while let Ok(req) = receiver.recv() {
                 match req {
                     LoggerRequest::Log(msg, instant) => {
                         let send_time =
@@ -65,12 +62,12 @@ impl FileLogger {
                                 Ok(d) => begin_time + d,
                                 Err(_) => Local::now(),
                             };
-                        if let Err(e) = log_message(&mut logs, msg, send_time).await {
+                        if let Err(e) = do_log_message(&mut logs, msg, send_time) {
                             eprintln!("error logging message: {e:?}")
                         }
                     }
                     LoggerRequest::Disconnect(sender) => {
-                        let resp = disconnect(&mut logs).await;
+                        let resp = do_disconnect(&mut logs);
                         let _ = sender.send(resp);
                     }
                 }
@@ -80,37 +77,22 @@ impl FileLogger {
         Ok(FileLogger { sender })
     }
 
-    pub(super) async fn disconnect(&mut self) -> Result<(), SessionError> {
+    pub(super) async fn disconnect(&mut self) -> Result<(), io::Error> {
         let (sender, receiver) = oneshot::channel();
         let req = LoggerRequest::Disconnect(sender);
-        self.sender.send(req).map_err(to_io_err)?;
-        receiver.await.map_err(to_io_err)?
+        self.sender.send(req).map_err(io_err)?;
+        receiver.await.map_err(io_err)?
     }
 }
 
-async fn log_message(
-    logs: &mut File,
-    buf: String,
-    time: DateTime<Local>,
-) -> Result<(), SessionError> {
-    logs.write_all(format!("{} : {}\n", message_stamp(time), buf).as_bytes())
-        .await?;
-    logs.flush().await?;
-    Ok(())
+fn do_log_message(logs: &mut File, buf: String, time: DateTime<Local>) -> Result<(), io::Error> {
+    writeln!(logs, "{} : {}", time.format("%Y%m%d-%H:%M:%S%.9f"), buf)
 }
 
-async fn disconnect(logs: &mut File) -> Result<(), SessionError> {
-    logs.flush().await?;
-    Ok(())
+fn do_disconnect(logs: &mut File) -> Result<(), io::Error> {
+    Ok(logs.flush()?)
 }
 
-fn message_stamp(time: DateTime<Local>) -> String {
-    time.format("%Y%m%d-%H:%M:%S%.9f").to_string()
-}
-
-fn to_io_err<E>(e: E) -> std::io::Error
-where
-    E: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
-    std::io::Error::new(std::io::ErrorKind::Other, e)
+fn io_err<T>(_: T) -> io::Error {
+    io::Error::other("logger thread failed")
 }

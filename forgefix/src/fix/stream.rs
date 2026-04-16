@@ -1,6 +1,6 @@
 use crate::fix::log::Logger;
 use crate::fix::mem::MsgBuf;
-use crate::fix::{decode, validate, SessionError};
+use crate::fix::{SessionError, decode, validate};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -199,7 +199,7 @@ mod test {
 
     struct MockLogger;
     impl Logger for MockLogger {
-        fn log_message(&mut self, _: &MsgBuf) -> Result<(), SessionError> {
+        fn log_message(&mut self, _: &MsgBuf) -> Result<(), std::io::Error> {
             Ok(())
         }
     }
@@ -213,9 +213,11 @@ mod test {
         read_header(&mut no_next_message, &mut header_buf)
             .await
             .unwrap();
-        assert!(skip_to_next_message(&mut no_next_message, &mut header_buf)
-            .await
-            .is_ok());
+        assert!(
+            skip_to_next_message(&mut no_next_message, &mut header_buf)
+                .await
+                .is_ok()
+        );
         assert_eq!(
             no_next_message.position() as usize,
             no_next_message.get_ref().len()
@@ -260,9 +262,11 @@ mod test {
         read_header(&mut next_msg_maybe, &mut header_buf)
             .await
             .unwrap();
-        assert!(skip_to_next_message(&mut next_msg_maybe, &mut header_buf)
-            .await
-            .is_ok());
+        assert!(
+            skip_to_next_message(&mut next_msg_maybe, &mut header_buf)
+                .await
+                .is_ok()
+        );
         assert_eq!(
             next_msg_maybe.position() as usize,
             next_msg_maybe.get_ref().len()
@@ -274,9 +278,11 @@ mod test {
         read_header(&mut next_msg_maybe, &mut header_buf)
             .await
             .unwrap();
-        assert!(skip_to_next_message(&mut next_msg_maybe, &mut header_buf)
-            .await
-            .is_ok());
+        assert!(
+            skip_to_next_message(&mut next_msg_maybe, &mut header_buf)
+                .await
+                .is_ok()
+        );
         assert_eq!(
             next_msg_maybe.position() as usize,
             next_msg_maybe.get_ref().len()
@@ -288,9 +294,11 @@ mod test {
         read_header(&mut next_msg_maybe, &mut header_buf)
             .await
             .unwrap();
-        assert!(skip_to_next_message(&mut next_msg_maybe, &mut header_buf)
-            .await
-            .is_ok());
+        assert!(
+            skip_to_next_message(&mut next_msg_maybe, &mut header_buf)
+                .await
+                .is_ok()
+        );
         assert_eq!(
             next_msg_maybe.position() as usize,
             next_msg_maybe.get_ref().len()
@@ -303,9 +311,11 @@ mod test {
         let mut mock_logger = MockLogger;
         let mut incoming_message = Cursor::new(b"8=FIX.4.2\x019=67\x0135=A\x0134=1\x0149=ISLD\x0152=20240506-13:59:15.021\x0156=TW\x0198=0\x01108=30\x01141=Y\x0110=003\x01".as_slice());
         let mut header_buf = HeaderBuf::<{ PEEK_LEN }>::new();
-        assert!(read_header(&mut incoming_message, &mut header_buf)
-            .await
-            .is_ok());
+        assert!(
+            read_header(&mut incoming_message, &mut header_buf)
+                .await
+                .is_ok()
+        );
 
         let expected = MsgBuf(incoming_message.get_ref().to_vec());
         assert_eq!(
@@ -373,9 +383,11 @@ mod test {
         let mut incoming_header = Cursor::new(incoming_message);
         let mut header_buf = HeaderBuf::<{ incoming_message.len() }>::new();
 
-        assert!(read_header(&mut incoming_header, &mut header_buf)
-            .await
-            .is_ok());
+        assert!(
+            read_header(&mut incoming_header, &mut header_buf)
+                .await
+                .is_ok()
+        );
         assert_eq!(&header_buf.filled(), incoming_header.get_ref());
 
         header_buf.clear();
@@ -391,24 +403,30 @@ mod test {
         header_buf.unfilled_mut()[..3].copy_from_slice(b"8=F");
         header_buf.advance(3);
         incoming_header.set_position(3);
-        assert!(read_header(&mut incoming_header, &mut header_buf)
-            .await
-            .is_ok());
+        assert!(
+            read_header(&mut incoming_header, &mut header_buf)
+                .await
+                .is_ok()
+        );
         assert_eq!(&header_buf.filled(), incoming_header.get_ref());
 
         header_buf.clear();
         let mut empty_message = Cursor::new(b"");
-        assert!(read_header(&mut empty_message, &mut header_buf)
-            .await
-            .is_err());
+        assert!(
+            read_header(&mut empty_message, &mut header_buf)
+                .await
+                .is_err()
+        );
 
         let mut full_header: HeaderBuf<{ incoming_message.len() }> = HeaderBuf {
             inner: vec![0u8; incoming_message.len()].into_boxed_slice(),
             filled_len: incoming_message.len(),
         };
-        assert!(read_header(&mut incoming_header, &mut full_header)
-            .await
-            .is_ok());
+        assert!(
+            read_header(&mut incoming_header, &mut full_header)
+                .await
+                .is_ok()
+        );
     }
 
     #[test]
