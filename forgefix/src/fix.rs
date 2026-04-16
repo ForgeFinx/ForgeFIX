@@ -15,11 +15,11 @@ use thiserror::Error;
 use crate::fix::decode::{parse_field, parse_sending_time};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
 use crate::fix::fields::{GapFillFlag, PossDupFlag, SessionRejectReason, Tags, is_session_message};
-use crate::fix::log::{FileLogger, Logger};
 use crate::fix::resend::Transformer;
 use crate::fix::session::{Event, MyStateMachine};
 use crate::fix::stopwatch::FixTimeouts;
 use crate::fix::validate::validate_msg;
+use crate::log::Logger;
 use crate::{FixEngineType, Request, SessionSettings};
 use store::Store;
 
@@ -37,7 +37,6 @@ pub mod fields;
 pub mod mem;
 
 mod checksum;
-mod log;
 mod resend;
 mod session;
 mod stopwatch;
@@ -301,12 +300,12 @@ pub(super) async fn spin_session(
     message_received_event_sender: mpsc::UnboundedSender<Arc<MsgBuf>>,
     settings: SessionSettings,
     typ: crate::EngineKind,
+    mut logger: impl Logger,
 ) -> Result<()> {
     // SETUP
 
     let additional_headers = AdditionalHeaders::build(&settings);
     let store = Store::build(&settings)?;
-    let mut logger = FileLogger::build(&settings).await?;
     let sequences = store.get_sequences(settings.epoch.clone()).await?;
     let mut state_machine = MyStateMachine::new(&settings, sequences);
 
@@ -612,7 +611,7 @@ async fn disconnect(
     epoch: Arc<String>,
     state_machine: &MyStateMachine,
     stream: TcpStream,
-    mut logger: FileLogger,
+    logger: impl Logger,
 ) -> Result<()> {
     request_receiver.close();
     store.set_sequences(

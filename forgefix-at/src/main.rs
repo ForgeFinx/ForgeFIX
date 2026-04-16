@@ -125,7 +125,8 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
         .build()?;
 
     if is_server {
-        let mut fix_server = forgefix::EngineFactory::acceptor(settings)?;
+        let mut fix_server =
+            forgefix::EngineFactory::acceptor(settings, forgefix::log::FileLoggerFactory)?;
 
         loop {
             let (fix_handle, mut event_receiver) = fix_server.connect().await?;
@@ -151,9 +152,10 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
     } else {
         // forgefix PUBLIC API IN USE HERE
 
-        let (fix_handle, mut event_receiver) = forgefix::EngineFactory::initiator(settings)?
-            .connect()
-            .await?;
+        let (fix_handle, mut event_receiver) =
+            forgefix::EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
+                .connect()
+                .await?;
 
         tokio::spawn(async move {
             while let Some(msg) = event_receiver.recv().await {

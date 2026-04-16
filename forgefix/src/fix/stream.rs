@@ -1,6 +1,6 @@
-use crate::fix::log::Logger;
 use crate::fix::mem::MsgBuf;
 use crate::fix::{SessionError, decode, validate};
+use crate::log::Logger;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::net::TcpStream;
 
@@ -200,6 +200,9 @@ mod test {
     struct MockLogger;
     impl Logger for MockLogger {
         fn log_message(&mut self, _: &MsgBuf) -> Result<(), std::io::Error> {
+            Ok(())
+        }
+        async fn disconnect(self) -> Result<(), std::io::Error> {
             Ok(())
         }
     }

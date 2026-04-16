@@ -115,7 +115,8 @@ impl BlockingFixApplicationClient {
     pub fn build(
         settings: SessionSettings,
     ) -> Result<BlockingFixApplicationClient, ApplicationError> {
-        let mut fix_app_initiator = EngineFactory::initiator(settings)?;
+        let mut fix_app_initiator =
+            EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?;
         let (inner, mut event_receiver) = fix_app_initiator.connect_sync()?;
         event_receiver.close();
 

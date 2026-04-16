@@ -39,7 +39,7 @@
 //!         .build()?;
 //!
 //!     // create a FIX engine and intiate TCP connection
-//!     let (handle, mut event_receiver) = EngineFactory::initiator(settings)?
+//!     let (handle, mut event_receiver) = EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
 //!         .connect()
 //!         .await?;
 //!
@@ -78,7 +78,7 @@
 //!         .with_socket_addr("127.0.0.1:0".parse().unwrap())
 //!         .build()?;
 //!
-//!     let (handle, mut event_receiver) = EngineFactory::initiator(settings)?
+//!     let (handle, mut event_receiver) = EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
 //!         .connect_sync()?;
 //!
 //!     std::thread::spawn(move || {
@@ -106,6 +106,8 @@
 //! if restarted. Otherwise, every restart results in a new FIX session.
 
 pub mod fix;
+pub mod log;
+
 use fix::encode::MessageBuilder;
 use fix::mem::MsgBuf;
 
@@ -257,6 +259,9 @@ impl SessionSettingsBuilder {
     }
 
     /// The directory that should be used to create log files.
+    ///
+    /// This field is read by [`log::FileLoggerFactory`] to determine where to write log files.
+    /// Custom [`log::LoggerFactory`] implementations may ignore it.
     pub fn with_log_dir(mut self, log_dir: PathBuf) -> Self {
         self.set_log_dir(log_dir);
         self
@@ -369,7 +374,7 @@ impl SessionSettings {
 /// #        .with_socket_addr("127.0.0.1:0".parse().unwrap())
 /// #        .build()?;
 ///
-/// let (handle, mut receiver) = EngineFactory::initiator(settings)?
+/// let (handle, mut receiver) = EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
 ///     .connect()
 ///     .await?;
 /// receiver.close();
@@ -584,29 +589,41 @@ impl StreamFactory {
 /// connections and waits for the first `Logon<35=A>` message. See ([FIX spec]) for more details.
 ///
 /// [FIX spec]: https://www.fixtrading.org/standards/fix-session-layer-online/
-pub struct EngineFactory {
+pub struct EngineFactory<LF> {
     typ: EngineKind,
     settings: SessionSettings,
     stream_factory: StreamFactory,
+    logger_factory: LF,
 }
 
-impl EngineFactory {
+impl<LF: log::LoggerFactory> EngineFactory<LF> {
     /// Build an `EngineFactory` that creates an acceptor FIX engine using settings
-    pub fn acceptor(settings: SessionSettings) -> Result<Self, ApplicationError> {
-        Self::build(settings, EngineKind::Acceptor)
+    pub fn acceptor(
+        settings: SessionSettings,
+        logger_factory: LF,
+    ) -> Result<Self, ApplicationError> {
+        Self::build(settings, EngineKind::Acceptor, logger_factory)
     }
 
     /// Build an `EngineFactory` that creates an initiator FIX engine using settings
-    pub fn initiator(settings: SessionSettings) -> Result<Self, ApplicationError> {
-        Self::build(settings, EngineKind::Initiator)
+    pub fn initiator(
+        settings: SessionSettings,
+        logger_factory: LF,
+    ) -> Result<Self, ApplicationError> {
+        Self::build(settings, EngineKind::Initiator, logger_factory)
     }
 
-    fn build(settings: SessionSettings, typ: EngineKind) -> Result<Self, ApplicationError> {
+    fn build(
+        settings: SessionSettings,
+        typ: EngineKind,
+        logger_factory: LF,
+    ) -> Result<Self, ApplicationError> {
         let stream_factory = StreamFactory::build(&settings, typ)?;
         Ok(Self {
             settings,
             stream_factory,
             typ,
+            logger_factory,
         })
     }
 
@@ -627,6 +644,7 @@ impl EngineFactory {
     ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
         let stream = self.stream_factory.stream().await?;
         let settings = self.settings.clone();
+        let logger = self.logger_factory.build(&settings)?;
 
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
         let (app_message_event_sender, app_message_event_receiver) =
@@ -642,6 +660,7 @@ impl EngineFactory {
                 app_message_event_sender,
                 settings,
                 typ,
+                logger,
             )
             .await
             {
@@ -664,6 +683,7 @@ impl EngineFactory {
     ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
         let stream = runtime.block_on(self.stream_factory.stream())?;
         let settings = self.settings.clone();
+        let logger = runtime.block_on(async { self.logger_factory.build(&settings) })?;
 
         let (request_sender, request_receiver) = mpsc::unbounded_channel::<Request>();
         let (app_message_event_sender, app_message_event_receiver) =
@@ -679,6 +699,7 @@ impl EngineFactory {
                 app_message_event_sender,
                 settings,
                 typ,
+                logger,
             )) {
                 eprintln!("{e:?}");
             }
