@@ -1,5 +1,5 @@
 use crate::fix::checksum::checksum_is_valid;
-use crate::fix::generated::{MsgType, SessionRejectReason, Tags};
+use crate::fix::fields::{MsgType, SessionRejectReason, Tags};
 use crate::fix::mem::MsgBuf;
 use crate::fix::{GarbledMessageType, SessionError};
 

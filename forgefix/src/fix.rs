@@ -14,9 +14,7 @@ use thiserror::Error;
 
 use crate::fix::decode::{parse_field, parse_sending_time};
 use crate::fix::encode::{AdditionalHeaders, MessageBuilder, SerializedInt};
-use crate::fix::generated::{
-    GapFillFlag, PossDupFlag, SessionRejectReason, Tags, is_session_message,
-};
+use crate::fix::fields::{GapFillFlag, PossDupFlag, SessionRejectReason, Tags, is_session_message};
 use crate::fix::log::{FileLogger, Logger};
 use crate::fix::resend::Transformer;
 use crate::fix::session::{Event, MyStateMachine};
@@ -25,8 +23,8 @@ use crate::fix::validate::validate_msg;
 use crate::{FixEngineType, Request, SessionSettings};
 use store::Store;
 
-use generated::MsgType;
-use generated::MsgType::*;
+use fields::MsgType;
+use fields::MsgType::*;
 use mem::MsgBuf;
 
 use std::io;
@@ -35,7 +33,7 @@ use std::time::{Duration, Instant};
 
 pub mod decode;
 pub mod encode;
-pub mod generated;
+pub mod fields;
 pub mod mem;
 
 mod checksum;
@@ -759,7 +757,7 @@ async fn build_gap_fill_msg(
     new_seq_num: u32,
     additional_headers: &AdditionalHeaders,
 ) -> Result<MsgBuf, SessionError> {
-    let builder = MessageBuilder::new("FIX.4.2", MsgType::SEQUENCE_RESET.into())
+    let builder = MessageBuilder::new("FIX.4.2", MsgType::SEQUENCE_RESET)
         .push(Tags::NewSeqNo, SerializedInt::from(new_seq_num).as_bytes())
         .push(Tags::GapFillFlag, b"Y");
     let msg = build_message_with_headers(builder, msg_seq_num, additional_headers).await?;

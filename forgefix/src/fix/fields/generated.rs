@@ -857,7 +857,7 @@ pub fn get_data_ref(tag: u32) -> Option<u32> {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AdvSide {
     BUY = 'B' as isize,
     SELL = 'S' as isize,
@@ -896,7 +896,7 @@ impl TryFrom<char> for AdvSide {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CommType {
     PER_SHARE = '1' as isize,
     PERCENTAGE = '2' as isize,
@@ -932,7 +932,7 @@ impl TryFrom<char> for CommType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ExecTransType {
     NEW = '0' as isize,
     CANCEL = '1' as isize,
@@ -971,7 +971,7 @@ impl TryFrom<char> for ExecTransType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum HandlInst {
     AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION = '1' as isize,
     AUTOMATED_EXECUTION_ORDER_PUBLIC_BROKER_INTERVENTION_OK = '2' as isize,
@@ -1007,7 +1007,7 @@ impl TryFrom<char> for HandlInst {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum IOIQltyInd {
     HIGH = 'H' as isize,
     LOW = 'L' as isize,
@@ -1043,7 +1043,7 @@ impl TryFrom<char> for IOIQltyInd {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum IOITransType {
     CANCEL = 'C' as isize,
     NEW = 'N' as isize,
@@ -1079,7 +1079,7 @@ impl TryFrom<char> for IOITransType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum LastCapacity {
     AGENT = '1' as isize,
     CROSS_AS_AGENT = '2' as isize,
@@ -1118,7 +1118,7 @@ impl TryFrom<char> for LastCapacity {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MsgType {
     HEARTBEAT = '0' as isize,
     TEST_REQUEST = '1' as isize,
@@ -1283,7 +1283,7 @@ impl TryFrom<char> for MsgType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum OrdStatus {
     NEW = '0' as isize,
     PARTIALLY_FILLED = '1' as isize,
@@ -1355,7 +1355,7 @@ impl TryFrom<char> for OrdStatus {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum OrdType {
     MARKET = '1' as isize,
     LIMIT = '2' as isize,
@@ -1439,7 +1439,7 @@ impl TryFrom<char> for OrdType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum PossDupFlag {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -1472,7 +1472,7 @@ impl TryFrom<char> for PossDupFlag {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Rule80A {
     AGENCY_SINGLE_ORDER = 'A' as isize,
     SHORT_EXEMPT_TRANSACTION_B = 'B' as isize,
@@ -1549,7 +1549,7 @@ impl TryFrom<char> for Rule80A {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Side {
     BUY = '1' as isize,
     SELL = '2' as isize,
@@ -1603,7 +1603,7 @@ impl TryFrom<char> for Side {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TimeInForce {
     DAY = '0' as isize,
     GOOD_TILL_CANCEL = '1' as isize,
@@ -1651,7 +1651,7 @@ impl TryFrom<char> for TimeInForce {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Urgency {
     NORMAL = '0' as isize,
     FLASH = '1' as isize,
@@ -1687,7 +1687,7 @@ impl TryFrom<char> for Urgency {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SettlmntTyp {
     REGULAR = '0' as isize,
     CASH = '1' as isize,
@@ -1744,7 +1744,7 @@ impl TryFrom<char> for SettlmntTyp {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AllocTransType {
     NEW = '0' as isize,
     REPLACE = '1' as isize,
@@ -1789,7 +1789,7 @@ impl TryFrom<char> for AllocTransType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum OpenClose {
     CLOSE = 'C' as isize,
     OPEN = 'O' as isize,
@@ -1822,7 +1822,7 @@ impl TryFrom<char> for OpenClose {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ProcessCode {
     REGULAR = '0' as isize,
     SOFT_DOLLAR = '1' as isize,
@@ -1870,7 +1870,7 @@ impl TryFrom<char> for ProcessCode {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AllocStatus {
     ACCEPTED = 0,
     REJECTED = 1,
@@ -1892,7 +1892,7 @@ impl TryFrom<u8> for AllocStatus {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AllocRejCode {
     UNKNOWN_ACCOUNT = 0,
     INCORRECT_QUANTITY = 1,
@@ -1922,7 +1922,7 @@ impl TryFrom<u8> for AllocRejCode {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum EmailType {
     NEW = '0' as isize,
     REPLY = '1' as isize,
@@ -1958,7 +1958,7 @@ impl TryFrom<char> for EmailType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum PossResend {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -1991,7 +1991,7 @@ impl TryFrom<char> for PossResend {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum EncryptMethod {
     NONE = 0,
     PKCS = 1,
@@ -2019,7 +2019,7 @@ impl TryFrom<u8> for EncryptMethod {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CxlRejReason {
     TOO_LATE_TO_CANCEL = 0,
     UNKNOWN_ORDER = 1,
@@ -2041,7 +2041,7 @@ impl TryFrom<u8> for CxlRejReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum OrdRejReason {
     BROKER_OPTION = 0,
     UNKNOWN_SYMBOL = 1,
@@ -2073,7 +2073,7 @@ impl TryFrom<u8> for OrdRejReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum IOIQualifier {
     ALL_OR_NONE = 'A' as isize,
     AT_THE_CLOSE = 'C' as isize,
@@ -2148,7 +2148,7 @@ impl TryFrom<char> for IOIQualifier {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ReportToExch {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2181,7 +2181,7 @@ impl TryFrom<char> for ReportToExch {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum LocateReqd {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2214,7 +2214,7 @@ impl TryFrom<char> for LocateReqd {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ForexReq {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2247,7 +2247,7 @@ impl TryFrom<char> for ForexReq {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum GapFillFlag {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2280,7 +2280,7 @@ impl TryFrom<char> for GapFillFlag {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DKReason {
     UNKNOWN_SYMBOL = 'A' as isize,
     WRONG_SIDE = 'B' as isize,
@@ -2325,7 +2325,7 @@ impl TryFrom<char> for DKReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum IOINaturalFlag {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2358,7 +2358,7 @@ impl TryFrom<char> for IOINaturalFlag {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MiscFeeType {
     REGULATORY = '1' as isize,
     TAX = '2' as isize,
@@ -2412,7 +2412,7 @@ impl TryFrom<char> for MiscFeeType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ResetSeqNumFlag {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2445,7 +2445,7 @@ impl TryFrom<char> for ResetSeqNumFlag {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ExecType {
     NEW = '0' as isize,
     PARTIAL_FILL = '1' as isize,
@@ -2517,7 +2517,7 @@ impl TryFrom<char> for ExecType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SettlCurrFxRateCalc {
     MULTIPLY = 'M' as isize,
     DIVIDE = 'D' as isize,
@@ -2550,7 +2550,7 @@ impl TryFrom<char> for SettlCurrFxRateCalc {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SettlInstMode {
     DEFAULT = '0' as isize,
     STANDING_INSTRUCTIONS_PROVIDED = '1' as isize,
@@ -2589,7 +2589,7 @@ impl TryFrom<char> for SettlInstMode {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SettlInstTransType {
     CANCEL = 'C' as isize,
     NEW = 'N' as isize,
@@ -2625,7 +2625,7 @@ impl TryFrom<char> for SettlInstTransType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SettlInstSource {
     BROKERS_INSTRUCTIONS = '1' as isize,
     INSTITUTIONS_INSTRUCTIONS = '2' as isize,
@@ -2658,7 +2658,7 @@ impl TryFrom<char> for SettlInstSource {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum StandInstDbType {
     OTHER = 0,
     DTC_SID = 1,
@@ -2680,7 +2680,7 @@ impl TryFrom<u8> for StandInstDbType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AllocLinkType {
     F_X_NETTING = 0,
     F_X_SWAP = 1,
@@ -2698,7 +2698,7 @@ impl TryFrom<u8> for AllocLinkType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum PutOrCall {
     PUT = 0,
     CALL = 1,
@@ -2716,7 +2716,7 @@ impl TryFrom<u8> for PutOrCall {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CoveredOrUncovered {
     COVERED = 0,
     UNCOVERED = 1,
@@ -2734,7 +2734,7 @@ impl TryFrom<u8> for CoveredOrUncovered {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CustomerOrFirm {
     CUSTOMER = 0,
     FIRM = 1,
@@ -2752,7 +2752,7 @@ impl TryFrom<u8> for CustomerOrFirm {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum NotifyBrokerOfCredit {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2785,7 +2785,7 @@ impl TryFrom<char> for NotifyBrokerOfCredit {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AllocHandlInst {
     MATCH = 1,
     FORWARD = 2,
@@ -2805,7 +2805,7 @@ impl TryFrom<u8> for AllocHandlInst {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum RoutingType {
     TARGET_FIRM = 1,
     TARGET_LIST = 2,
@@ -2827,7 +2827,7 @@ impl TryFrom<u8> for RoutingType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Benchmark {
     CURVE = '1' as isize,
     FIVE_YR = '2' as isize,
@@ -2881,7 +2881,7 @@ impl TryFrom<char> for Benchmark {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SubscriptionRequestType {
     SNAPSHOT = '0' as isize,
     SNAPSHOT_PLUS_UPDATES = '1' as isize,
@@ -2917,7 +2917,7 @@ impl TryFrom<char> for SubscriptionRequestType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MDUpdateType {
     FULL_REFRESH = 0,
     INCREMENTAL_REFRESH = 1,
@@ -2935,7 +2935,7 @@ impl TryFrom<u8> for MDUpdateType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum AggregatedBook {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -2968,7 +2968,7 @@ impl TryFrom<char> for AggregatedBook {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MDEntryType {
     BID = '0' as isize,
     OFFER = '1' as isize,
@@ -3025,7 +3025,7 @@ impl TryFrom<char> for MDEntryType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TickDirection {
     PLUS_TICK = '0' as isize,
     ZERO_PLUS_TICK = '1' as isize,
@@ -3064,7 +3064,7 @@ impl TryFrom<char> for TickDirection {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MDUpdateAction {
     NEW = '0' as isize,
     CHANGE = '1' as isize,
@@ -3100,7 +3100,7 @@ impl TryFrom<char> for MDUpdateAction {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MDReqRejReason {
     UNKNOWN_SYMBOL = '0' as isize,
     DUPLICATE_MDREQID = '1' as isize,
@@ -3154,7 +3154,7 @@ impl TryFrom<char> for MDReqRejReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DeleteReason {
     CANCELATION = '0' as isize,
     ERROR = '1' as isize,
@@ -3187,7 +3187,7 @@ impl TryFrom<char> for DeleteReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum OpenCloseSettleFlag {
     DAILY_OPEN = '0' as isize,
     SESSION_OPEN = '1' as isize,
@@ -3223,7 +3223,7 @@ impl TryFrom<char> for OpenCloseSettleFlag {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FinancialStatus {
     BANKRUPT = '1' as isize,
 }
@@ -3253,7 +3253,7 @@ impl TryFrom<char> for FinancialStatus {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CorporateAction {
     EX_DIVIDEND = 'A' as isize,
     EX_DISTRIBUTION = 'B' as isize,
@@ -3295,7 +3295,7 @@ impl TryFrom<char> for CorporateAction {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum QuoteAckStatus {
     ACCEPTED = 0,
     CANCELED_FOR_SYMBOL = 1,
@@ -3321,7 +3321,7 @@ impl TryFrom<u8> for QuoteAckStatus {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum QuoteCancelType {
     CANCEL_FOR_SYMBOL = 1,
     CANCEL_FOR_SECURITY_TYPE = 2,
@@ -3343,7 +3343,7 @@ impl TryFrom<u8> for QuoteCancelType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum QuoteRejectReason {
     UNKNOWN_SYMBOL = 1,
     EXCHANGE = 2,
@@ -3375,7 +3375,7 @@ impl TryFrom<u8> for QuoteRejectReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum QuoteResponseLevel {
     NO_ACKNOWLEDGEMENT = 0,
     ACKNOWLEDGE_ONLY_NEGATIVE_OR_ERRONEOUS_QUOTES = 1,
@@ -3395,7 +3395,7 @@ impl TryFrom<u8> for QuoteResponseLevel {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum QuoteRequestType {
     MANUAL = 1,
     AUTOMATIC = 2,
@@ -3413,7 +3413,7 @@ impl TryFrom<u8> for QuoteRequestType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SecurityRequestType {
     REQUEST_SECURITY_IDENTITY_AND_SPECIFICATIONS = 0,
     REQUEST_SECURITY_IDENTITY_FOR_THE_SPECIFICATIONS_PROVIDED = 1,
@@ -3435,7 +3435,7 @@ impl TryFrom<u8> for SecurityRequestType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SecurityResponseType {
     ACCEPT_SECURITY_PROPOSAL_AS_IS = 1,
     ACCEPT_SECURITY_PROPOSAL_WITH_REVISIONS_AS_INDICATED_IN_THE_MESSAGE = 2,
@@ -3461,7 +3461,7 @@ impl TryFrom<u8> for SecurityResponseType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum UnsolicitedIndicator {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -3494,7 +3494,7 @@ impl TryFrom<char> for UnsolicitedIndicator {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SecurityTradingStatus {
     OPENING_DELAY = 1,
     MARKET_ON_CLOSE_IMBALANCE_SELL = 10,
@@ -3546,7 +3546,7 @@ impl TryFrom<u8> for SecurityTradingStatus {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum HaltReasonChar {
     NEWS_DISSEMINATION = 'D' as isize,
     ORDER_INFLUX = 'E' as isize,
@@ -3591,7 +3591,7 @@ impl TryFrom<char> for HaltReasonChar {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum InViewOfCommon {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -3624,7 +3624,7 @@ impl TryFrom<char> for InViewOfCommon {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DueToRelated {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -3657,7 +3657,7 @@ impl TryFrom<char> for DueToRelated {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Adjustment {
     CANCEL = 1,
     ERROR = 2,
@@ -3677,7 +3677,7 @@ impl TryFrom<u8> for Adjustment {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TradSesMethod {
     ELECTRONIC = 1,
     OPEN_OUTCRY = 2,
@@ -3697,7 +3697,7 @@ impl TryFrom<u8> for TradSesMethod {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TradSesMode {
     TESTING = 1,
     SIMULATED = 2,
@@ -3717,7 +3717,7 @@ impl TryFrom<u8> for TradSesMode {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TradSesStatus {
     HALTED = 1,
     OPEN = 2,
@@ -3741,7 +3741,7 @@ impl TryFrom<u8> for TradSesStatus {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum QuoteEntryRejectReason {
     UNKNOWN_SYMBOL = 1,
     EXCHANGE = 2,
@@ -3773,7 +3773,7 @@ impl TryFrom<u8> for QuoteEntryRejectReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SessionRejectReason {
     INVALID_TAG_NUMBER = 0,
     REQUIRED_TAG_MISSING = 1,
@@ -3811,7 +3811,7 @@ impl TryFrom<u8> for SessionRejectReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum BidRequestTransType {
     CANCEL = 'C' as isize,
     NO = 'N' as isize,
@@ -3844,7 +3844,7 @@ impl TryFrom<char> for BidRequestTransType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum SolicitedFlag {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -3877,7 +3877,7 @@ impl TryFrom<char> for SolicitedFlag {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ExecRestatementReason {
     GT_CORPORATE_ACTION = 0,
     GT_RENEWAL = 1,
@@ -3903,7 +3903,7 @@ impl TryFrom<u8> for ExecRestatementReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum BusinessRejectReason {
     OTHER = 0,
     UNKOWN_ID = 1,
@@ -3929,7 +3929,7 @@ impl TryFrom<u8> for BusinessRejectReason {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MsgDirection {
     RECEIVE = 'R' as isize,
     SEND = 'S' as isize,
@@ -3962,7 +3962,7 @@ impl TryFrom<char> for MsgDirection {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DiscretionInst {
     RELATED_TO_DISPLAYED_PRICE = '0' as isize,
     RELATED_TO_MARKET_PRICE = '1' as isize,
@@ -4007,7 +4007,7 @@ impl TryFrom<char> for DiscretionInst {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum LiquidityIndType {
     FIVE_DAY_MOVING_AVERAGE = 1,
     TWENTY_DAY_MOVING_AVERAGE = 2,
@@ -4029,7 +4029,7 @@ impl TryFrom<u8> for LiquidityIndType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ExchangeForPhysical {
     NO = 'N' as isize,
     YES = 'Y' as isize,
@@ -4062,7 +4062,7 @@ impl TryFrom<char> for ExchangeForPhysical {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ProgRptReqs {
     BUYSIDE_EXPLICITLY_REQUESTS_STATUS_USING_STATUSREQUEST = 1,
     SELLSIDE_PERIODICALLY_SENDS_STATUS_USING_LISTSTATUS_PERIOD_OPTIONALLY_SPECIFIED_IN_PROGRESSPERIOD =
@@ -4081,7 +4081,7 @@ impl TryFrom<u8> for ProgRptReqs {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum IncTaxInd {
     NET = 1,
     GROSS = 2,
@@ -4099,7 +4099,7 @@ impl TryFrom<u8> for IncTaxInd {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum TradeType {
     AGENCY = 'A' as isize,
     VWAP_GUARANTEE = 'G' as isize,
@@ -4138,7 +4138,7 @@ impl TryFrom<char> for TradeType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum BasisPxType {
     CLOSING_PRICE_AT_MORNING_SESSION = '2' as isize,
     CLOSING_PRICE = '3' as isize,
@@ -4204,7 +4204,7 @@ impl TryFrom<char> for BasisPxType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum PriceType {
     PERCENTAGE = 1,
     PER_SHARE = 2,
@@ -4224,7 +4224,7 @@ impl TryFrom<u8> for PriceType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum GTBookingInst {
     BOOK_OUT_ALL_TRADES_ON_DAY_OF_EXECUTION = 0,
     ACCUMULATE_EXECUTIONS_UNTIL_ORDER_IS_FILLED_OR_EXPIRES = 1,
@@ -4244,7 +4244,7 @@ impl TryFrom<u8> for GTBookingInst {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum NetGrossInd {
     NET = 1,
     GROSS = 2,
@@ -4262,7 +4262,7 @@ impl TryFrom<u8> for NetGrossInd {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ListExecInstType {
     IMMEDIATE = '1' as isize,
     WAIT_FOR_EXECUTE_INSTRUCTION = '2' as isize,
@@ -4295,7 +4295,7 @@ impl TryFrom<char> for ListExecInstType {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CxlRejResponseTo {
     ORDER_CANCEL_REQUEST = '1' as isize,
     ORDER_CANCEL_REPLACE_REQUEST = '2' as isize,
@@ -4328,7 +4328,7 @@ impl TryFrom<char> for CxlRejResponseTo {
 }
 
 #[repr(C)]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MultiLegReportingType {
     SINGLE_SECURITY = '1' as isize,
     INDIVIDUAL_LEG_OF_A_MULTI_LEG_SECURITY = '2' as isize,

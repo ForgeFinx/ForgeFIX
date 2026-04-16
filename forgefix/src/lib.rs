@@ -357,7 +357,7 @@ impl SessionSettings {
 /// use forgefix::{
 ///     SessionSettings, EngineFactory, ApplicationError
 /// };
-/// use forgefix::fix::{encode::MessageBuilder, generated::MsgType};
+/// use forgefix::fix::{encode::MessageBuilder, fields::MsgType};
 /// # use anyhow::Result;
 /// # #[tokio::main]
 /// # async fn main() -> Result<()> {
@@ -385,7 +385,7 @@ impl SessionSettings {
 ///
 ///     let builder = MessageBuilder::new(
 ///         &handle1.begin_string(),
-///         MsgType::ORDER_SINGLE.into()
+///         MsgType::ORDER_SINGLE
 ///     );
 ///     handle1.send_message_async(builder).await
 ///
@@ -396,7 +396,7 @@ impl SessionSettings {
 /// let h2 = tokio::spawn(async move {
 ///     let builder = MessageBuilder::new(
 ///         &handle2.begin_string(),
-///         MsgType::ORDER_SINGLE.into()
+///         MsgType::ORDER_SINGLE
 ///     );
 ///     handle2.send_message_async(builder).await
 /// });

@@ -58,7 +58,7 @@ _=>None
 
 <xsl:template match="/fix/fields/field[@type = 'CHAR' or @type = 'BOOLEAN'][value]">
 #[repr(C)]
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug,PartialEq,Eq,Copy,Clone)]
 pub enum <xsl:value-of select="./@name" /> {
     <xsl:for-each select="value">
     <xsl:value-of select="./@description"/> = '<xsl:value-of select="./@enum"/>' as isize,
@@ -95,7 +95,7 @@ impl TryFrom&lt;char&gt; for <xsl:value-of select="./@name" /> {
 
 <xsl:template match="/fix/fields/field[@type = 'INT'][value]">
 #[repr(C)]
-#[derive(Debug,PartialEq,Eq)]
+#[derive(Debug,PartialEq,Eq,Copy,Clone)]
 pub enum <xsl:value-of select="./@name" /> {
     <xsl:for-each select="value">
     <xsl:value-of select="./@description"/> = <xsl:value-of select="./@enum"/>,
