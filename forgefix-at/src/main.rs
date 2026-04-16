@@ -1,17 +1,14 @@
 use clap::{Parser, ValueHint};
-use forgefix::{
-    fix,
-    fix::generated::{MsgType, Tags},
-    SessionSettings, FixApplicationAcceptor, FixApplicationHandle, FixApplicationInitiator,
-    fix::decode::{parse_field},
-};
+use forgefix::fix::decode::parse_field;
+use forgefix::fix::fields::{MsgType, Tags};
+use forgefix::{SessionSettings, fix};
 use std::error::Error;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::naive::NaiveTime; 
+use chrono::naive::NaiveTime;
 
 fn parse_duration(s: &str) -> Result<Duration, std::num::ParseIntError> {
     let seconds = s.parse()?;
@@ -19,7 +16,7 @@ fn parse_duration(s: &str) -> Result<Duration, std::num::ParseIntError> {
 }
 
 fn parse_time(s: &str) -> Result<NaiveTime, chrono::format::ParseError> {
-    let res = NaiveTime::parse_from_str(s, "%H:%M:%S")?; 
+    let res = NaiveTime::parse_from_str(s, "%H:%M:%S")?;
     Ok(res)
 }
 
@@ -66,7 +63,7 @@ struct Opts {
 
     /// Time session should start each day in format HH:MM:SS
     #[arg(long, default_value = "23:59:59", value_parser = parse_time)]
-    start: NaiveTime, 
+    start: NaiveTime,
 }
 
 impl Opts {
@@ -87,16 +84,16 @@ struct ApplicationParserCallback<'a> {
 }
 
 impl<'a> fix::decode::ParserCallback<'a> for ApplicationParserCallback<'a> {
-    type Err = String; 
+    type Err = String;
     fn header(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
-        if let Ok(fix::generated::Tags::MsgSeqNum) = key.try_into() {
+        if let Ok(fix::fields::Tags::MsgSeqNum) = key.try_into() {
             self.msg_seq_num =
                 parse_field::<u32>(value).or(Err(String::from("Missing MsgSeqNum")))?;
         }
         Ok(true)
     }
     fn body(&mut self, key: u32, value: &'a [u8]) -> Result<bool, Self::Err> {
-        if let Ok(fix::generated::Tags::ClOrdID) = key.try_into() {
+        if let Ok(fix::fields::Tags::ClOrdID) = key.try_into() {
             self.cl_order_id = Some(value);
         }
         Ok(true)
@@ -128,14 +125,14 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
         .build()?;
 
     if is_server {
-        let mut fix_server = FixApplicationAcceptor::build(settings)?;
+        let mut fix_server = forgefix::EngineFactory::acceptor(settings)?;
 
         loop {
-            let (fix_handle, mut event_receiver) = fix_server.accept().await?;
+            let (fix_handle, mut event_receiver) = fix_server.connect().await?;
             let h = tokio::spawn(async move {
                 let _ = fix_handle.start_async().await;
                 while event_receiver.recv().await.is_some() {
-                    let default_msg_type: char = fix::generated::MsgType::ORDER_SINGLE.into();
+                    let default_msg_type: char = fix::fields::MsgType::ORDER_SINGLE.into();
                     let builder = fix::encode::MessageBuilder::new(
                         fix_handle.begin_string().as_str(),
                         default_msg_type,
@@ -154,8 +151,8 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
     } else {
         // forgefix PUBLIC API IN USE HERE
 
-        let (fix_handle, mut event_receiver) = FixApplicationInitiator::build(settings)?
-            .initiate()
+        let (fix_handle, mut event_receiver) = forgefix::EngineFactory::initiator(settings)?
+            .connect()
             .await?;
 
         tokio::spawn(async move {
@@ -200,7 +197,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
 
 #[allow(clippy::too_many_arguments)]
 async fn send_order(
-    fix_app_client: &FixApplicationHandle,
+    fix_app_client: &forgefix::EngineHandle,
     sguid: &str,
     qty: u32,
     symbol: &str,
@@ -212,28 +209,28 @@ async fn send_order(
     let msg_type = MsgType::ORDER_SINGLE;
 
     let side = if is_buy {
-        fix::generated::Side::BUY
+        fix::fields::Side::BUY
     } else {
-        fix::generated::Side::SELL
+        fix::fields::Side::SELL
     };
     let qty = fix::encode::SerializedInt::from(qty);
     let transact_time = fix::encode::formatted_time();
 
-    let builder = fix::encode::MessageBuilder::new(&fix_app_client.begin_string(), msg_type.into())
+    let builder = fix::encode::MessageBuilder::new(&fix_app_client.begin_string(), msg_type)
         .push(Tags::Account, account.as_bytes())
         .push(Tags::ClOrdID, sguid.as_bytes())
         .push(Tags::IDSource, ID_SOURCE.as_bytes())
         .push(Tags::OrderQty, qty.as_bytes())
-        .push(Tags::OrdType, fix::generated::OrdType::LIMIT.into())
+        .push(Tags::OrdType, fix::fields::OrdType::LIMIT.into())
         .push(Tags::Price, price.as_bytes())
         .push(Tags::SecurityID, symbol.as_bytes())
         .push(Tags::Side, side.into())
         .push(
             Tags::TimeInForce,
-            fix::generated::TimeInForce::IMMEDIATE_OR_CANCEL.into(),
+            fix::fields::TimeInForce::IMMEDIATE_OR_CANCEL.into(),
         )
         .push(Tags::TransactTime, transact_time.as_bytes())
-        .push(Tags::OpenClose, fix::generated::OpenClose::OPEN.into())
+        .push(Tags::OpenClose, fix::fields::OpenClose::OPEN.into())
         .push(Tags::ExDestination, exchange.as_bytes());
 
     fix_app_client.send_message_async(builder).await
