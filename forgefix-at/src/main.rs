@@ -223,16 +223,16 @@ async fn send_order(
         .push(Tags::ClOrdID, sguid.as_bytes())
         .push(Tags::IDSource, ID_SOURCE.as_bytes())
         .push(Tags::OrderQty, qty.as_bytes())
-        .push(Tags::OrdType, fix::fields::OrdType::LIMIT.into())
+        .push(Tags::OrdType, fix::fields::OrdType::LIMIT)
         .push(Tags::Price, price.as_bytes())
         .push(Tags::SecurityID, symbol.as_bytes())
-        .push(Tags::Side, side.into())
+        .push(Tags::Side, side)
         .push(
             Tags::TimeInForce,
-            fix::fields::TimeInForce::IMMEDIATE_OR_CANCEL.into(),
+            fix::fields::TimeInForce::IMMEDIATE_OR_CANCEL,
         )
         .push(Tags::TransactTime, transact_time.as_bytes())
-        .push(Tags::OpenClose, fix::fields::OpenClose::OPEN.into())
+        .push(Tags::OpenClose, fix::fields::OpenClose::OPEN)
         .push(Tags::ExDestination, exchange.as_bytes());
 
     fix_app_client.send_message_async(builder).await
