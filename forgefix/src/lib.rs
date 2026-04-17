@@ -40,7 +40,7 @@
 //!
 //!     // create a FIX engine and intiate TCP connection
 //!     let (handle, mut event_receiver) = EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
-//!         .connect()
+//!         .start()
 //!         .await?;
 //!
 //!     // handle incoming messages in the background...
@@ -50,13 +50,13 @@
 //!         }
 //!     });
 //!
-//!     // start the FIX connection
-//!     handle.start_async().await?;
+//!     // logon to the FIX session
+//!     handle.logon_async().await?;
 //!
 //!     // send messages here...
 //!
-//!     // end the FIX connection
-//!     handle.end_async().await?;
+//!     // logout from the FIX session
+//!     handle.logout_async().await?;
 //!
 //!     Ok(())
 //! }
@@ -79,7 +79,7 @@
 //!         .build()?;
 //!
 //!     let (handle, mut event_receiver) = EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
-//!         .connect_sync()?;
+//!         .start_sync()?;
 //!
 //!     std::thread::spawn(move || {
 //!         while let Some(msg) = event_receiver.blocking_recv() {
@@ -87,17 +87,17 @@
 //!         }
 //!     });
 //!
-//!     handle.start_sync()?;
+//!     handle.logon_sync()?;
 //!
 //!     // send messages here...
 //!
-//!     handle.end_sync()?;
+//!     handle.logout_sync()?;
 //!     
 //!     Ok(())
 //! }
 //! ```
 //! *When using synchronous API, a tokio runtime is still created internally (see
-//! [`EngineFactory::connect_sync`])
+//! [`EngineFactory::start_sync`])
 //!
 //! ## Feature Flags
 //!
@@ -374,9 +374,12 @@ impl SessionSettings {
 /// #        .build()?;
 ///
 /// let (handle, mut receiver) = EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
-///     .connect()
+///     .start()
 ///     .await?;
 /// receiver.close();
+///
+/// // logon to the session
+/// handle.logon_async().await;
 ///
 /// // EngineHandle can be cloned
 /// let handle1 = handle.clone();
@@ -410,8 +413,8 @@ impl SessionSettings {
 /// res1??;
 /// res2??;
 ///     
-/// // end the FIX connection
-/// handle.end_async().await?;
+/// // logout from the session
+/// handle.logout_async().await?;
 ///  #   Ok(())
 /// # }
 ///
@@ -423,11 +426,11 @@ pub struct EngineHandle {
 }
 
 impl EngineHandle {
-    /// Send a request to the engine to start the connection and return immediately.
+    /// Send a request to the engine to logon to the session and return immediately.
     ///
-    /// The receiver will eventually yield `true` if a connection was successfully established, or
+    /// The receiver will eventually yield `true` if the session was successfully logged into, or
     /// `false` othersize.
-    pub fn start(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
+    pub fn logon(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
         if self.request_sender.is_closed() {
             return Err(ApplicationError::SessionEnded);
         }
@@ -436,17 +439,17 @@ impl EngineHandle {
         let _ = self.request_sender.send(logon_request);
         Ok(resp_receiver)
     }
-    /// Send a request to the engine to start the connection and await asynchronously.
-    pub async fn start_async(&self) -> Result<(), ApplicationError> {
-        let resp_sender = self.start()?;
+    /// Send a request to the engine to logon to the session await asynchronously.
+    pub async fn logon_async(&self) -> Result<(), ApplicationError> {
+        let resp_sender = self.logon()?;
         if Ok(true) != resp_sender.await {
             return Err(ApplicationError::LogonFailed);
         }
         Ok(())
     }
-    /// Send a request to the engine to start a connection, and block until a result is returned.
-    pub fn start_sync(&self) -> Result<(), ApplicationError> {
-        let resp_receiver = self.start()?;
+    /// Send a request to the engine to logon to the session, and block until a result is returned.
+    pub fn logon_sync(&self) -> Result<(), ApplicationError> {
+        let resp_receiver = self.logon()?;
         if Ok(true) != resp_receiver.blocking_recv() {
             return Err(ApplicationError::LogonFailed);
         }
@@ -498,33 +501,33 @@ impl EngineHandle {
         Ok(())
     }
 
-    /// Send a request to the engine to end the FIX connection, and return immediately.
+    /// Send a request to the engine to logout from the session, and return immediately.
     ///
-    /// If the request was successfully send to the engine, a [`oneshot::Receiver`] will be
+    /// If the request was successfully sent to the engine, a [`oneshot::Receiver`] will be
     /// returned.
     ///
-    /// The receiver will yield `true` is the FIX connection is over, and ended without any issues.
+    /// The receiver will yield `true` is the session was logged out from ended without any issues.
     /// Otherwise it will be `false`.
     ///
     /// [`oneshot::Receiver`]: https://docs.rs/tokio/latest/tokio/sync/oneshot/struct.Receiver.html
-    pub fn end(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
+    pub fn logout(&self) -> Result<oneshot::Receiver<bool>, ApplicationError> {
         let (resp_sender, resp_receiver) = oneshot::channel();
         let logout_request = Request::Logout { resp_sender };
         let _ = self.request_sender.send(logout_request);
         Ok(resp_receiver)
     }
-    /// Send a request to the engine to end the FIX connection, and await asynchronously.
-    pub async fn end_async(&self) -> Result<(), ApplicationError> {
-        let resp_sender = self.end()?;
+    /// Send a request to the engine to logout from the session, and await asynchronously.
+    pub async fn logout_async(&self) -> Result<(), ApplicationError> {
+        let resp_sender = self.logout()?;
         if Ok(true) != resp_sender.await {
             return Err(ApplicationError::LogoutFailed);
         }
         Ok(())
     }
-    /// Send a request to the engine to end the FIX connection, and block until a result is
+    /// Send a request to the engine to logout from the session, and block until a result is
     /// returned.
-    pub fn end_sync(&self) -> Result<(), ApplicationError> {
-        let resp_receiver = self.end()?;
+    pub fn logout_sync(&self) -> Result<(), ApplicationError> {
+        let resp_receiver = self.logout()?;
         if Ok(true) != resp_receiver.blocking_recv() {
             return Err(ApplicationError::LogoutFailed);
         }
@@ -625,14 +628,14 @@ impl<LF: log::LoggerFactory> EngineFactory<LF> {
     /// If the connection is successfully established, an [`EngineHandle`] will be returned, and an
     /// `UnboundedReceiver<Arc<MsgBuf>>` will be returned.
     ///
-    /// The application handle can be used to start the FIX connection, send messages and end the
+    /// The application handle can be used to logon to, send messages over, and logout from the FIX
     /// connection.
     ///
     /// The receiver is a channel where all incoming, valid application messages can be received.
     /// If you do not want to use the channel, it is recommended you call [`close`].
     ///
     /// [`close`]: tokio::sync::mpsc::UnboundedReceiver::close
-    pub async fn connect(
+    pub async fn start(
         &mut self,
     ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
         let stream = self.stream_factory.stream().await?;
@@ -670,7 +673,7 @@ impl<LF: log::LoggerFactory> EngineFactory<LF> {
     }
 
     /// Establish a TCP connection and start the FIX engine that will be driven by `runtime`.
-    pub fn connect_with_runtime(
+    pub fn start_with_runtime(
         &mut self,
         runtime: tokio::runtime::Runtime,
     ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
@@ -707,12 +710,12 @@ impl<LF: log::LoggerFactory> EngineFactory<LF> {
     }
 
     /// Establish a TCP connection, and a runtime will be created internally to drive the engine.
-    pub fn connect_sync(
+    pub fn start_sync(
         &mut self,
     ) -> Result<(EngineHandle, mpsc::UnboundedReceiver<Arc<MsgBuf>>), ApplicationError> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .enable_all()
             .build()?;
-        self.connect_with_runtime(runtime)
+        self.start_with_runtime(runtime)
     }
 }

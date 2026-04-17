@@ -137,7 +137,7 @@
 //! #        .with_socket_addr("127.0.0.1:0".parse().unwrap())
 //! #        .build()?;
 //!     let (handle, mut receiver) = EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
-//!         .connect()
+//!         .start()
 //!         .await?;
 //!
 //!     tokio::spawn(async move {
