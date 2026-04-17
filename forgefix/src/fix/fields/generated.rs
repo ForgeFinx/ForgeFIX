@@ -882,6 +882,17 @@ impl From<AdvSide> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for AdvSide {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            AdvSide::BUY => b"B",
+            AdvSide::SELL => b"S",
+            AdvSide::TRADE => b"T",
+            AdvSide::CROSS => b"X",
+        }
+    }
+}
+
 impl TryFrom<char> for AdvSide {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -912,6 +923,16 @@ impl From<CommType> for char {
 impl From<CommType> for &'static [u8] {
     fn from(a: CommType) -> &'static [u8] {
         match a {
+            CommType::PER_SHARE => b"1",
+            CommType::PERCENTAGE => b"2",
+            CommType::ABSOLUTE => b"3",
+        }
+    }
+}
+
+impl AsRef<[u8]> for CommType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             CommType::PER_SHARE => b"1",
             CommType::PERCENTAGE => b"2",
             CommType::ABSOLUTE => b"3",
@@ -957,6 +978,17 @@ impl From<ExecTransType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for ExecTransType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            ExecTransType::NEW => b"0",
+            ExecTransType::CANCEL => b"1",
+            ExecTransType::CORRECT => b"2",
+            ExecTransType::STATUS => b"3",
+        }
+    }
+}
+
 impl TryFrom<char> for ExecTransType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -987,6 +1019,16 @@ impl From<HandlInst> for char {
 impl From<HandlInst> for &'static [u8] {
     fn from(a: HandlInst) -> &'static [u8] {
         match a {
+            HandlInst::AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION => b"1",
+            HandlInst::AUTOMATED_EXECUTION_ORDER_PUBLIC_BROKER_INTERVENTION_OK => b"2",
+            HandlInst::MANUAL_ORDER_BEST_EXECUTION => b"3",
+        }
+    }
+}
+
+impl AsRef<[u8]> for HandlInst {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             HandlInst::AUTOMATED_EXECUTION_ORDER_PRIVATE_NO_BROKER_INTERVENTION => b"1",
             HandlInst::AUTOMATED_EXECUTION_ORDER_PUBLIC_BROKER_INTERVENTION_OK => b"2",
             HandlInst::MANUAL_ORDER_BEST_EXECUTION => b"3",
@@ -1030,6 +1072,16 @@ impl From<IOIQltyInd> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for IOIQltyInd {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            IOIQltyInd::HIGH => b"H",
+            IOIQltyInd::LOW => b"L",
+            IOIQltyInd::MEDIUM => b"M",
+        }
+    }
+}
+
 impl TryFrom<char> for IOIQltyInd {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -1059,6 +1111,16 @@ impl From<IOITransType> for char {
 impl From<IOITransType> for &'static [u8] {
     fn from(a: IOITransType) -> &'static [u8] {
         match a {
+            IOITransType::CANCEL => b"C",
+            IOITransType::NEW => b"N",
+            IOITransType::REPLACE => b"R",
+        }
+    }
+}
+
+impl AsRef<[u8]> for IOITransType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             IOITransType::CANCEL => b"C",
             IOITransType::NEW => b"N",
             IOITransType::REPLACE => b"R",
@@ -1096,6 +1158,17 @@ impl From<LastCapacity> for char {
 impl From<LastCapacity> for &'static [u8] {
     fn from(a: LastCapacity) -> &'static [u8] {
         match a {
+            LastCapacity::AGENT => b"1",
+            LastCapacity::CROSS_AS_AGENT => b"2",
+            LastCapacity::CROSS_AS_PRINCIPAL => b"3",
+            LastCapacity::PRINCIPAL => b"4",
+        }
+    }
+}
+
+impl AsRef<[u8]> for LastCapacity {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             LastCapacity::AGENT => b"1",
             LastCapacity::CROSS_AS_AGENT => b"2",
             LastCapacity::CROSS_AS_PRINCIPAL => b"3",
@@ -1177,6 +1250,59 @@ impl From<MsgType> for char {
 impl From<MsgType> for &'static [u8] {
     fn from(a: MsgType) -> &'static [u8] {
         match a {
+            MsgType::HEARTBEAT => b"0",
+            MsgType::TEST_REQUEST => b"1",
+            MsgType::RESEND_REQUEST => b"2",
+            MsgType::REJECT => b"3",
+            MsgType::SEQUENCE_RESET => b"4",
+            MsgType::LOGOUT => b"5",
+            MsgType::INDICATION_OF_INTEREST => b"6",
+            MsgType::ADVERTISEMENT => b"7",
+            MsgType::EXECUTION_REPORT => b"8",
+            MsgType::ORDER_CANCEL_REJECT => b"9",
+            MsgType::QUOTE_STATUS_REQUEST => b"a",
+            MsgType::LOGON => b"A",
+            MsgType::NEWS => b"B",
+            MsgType::QUOTE_ACKNOWLEDGEMENT => b"b",
+            MsgType::EMAIL => b"C",
+            MsgType::SECURITY_DEFINITION_REQUEST => b"c",
+            MsgType::ORDER_SINGLE => b"D",
+            MsgType::SECURITY_DEFINITION => b"d",
+            MsgType::ORDER_LIST => b"E",
+            MsgType::SECURITY_STATUS_REQUEST => b"e",
+            MsgType::SECURITY_STATUS => b"f",
+            MsgType::ORDER_CANCEL_REQUEST => b"F",
+            MsgType::ORDER_CANCEL_REPLACE_REQUEST => b"G",
+            MsgType::TRADING_SESSION_STATUS_REQUEST => b"g",
+            MsgType::ORDER_STATUS_REQUEST => b"H",
+            MsgType::TRADING_SESSION_STATUS => b"h",
+            MsgType::MASS_QUOTE => b"i",
+            MsgType::BUSINESS_MESSAGE_REJECT => b"j",
+            MsgType::ALLOCATION => b"J",
+            MsgType::LIST_CANCEL_REQUEST => b"K",
+            MsgType::BID_REQUEST => b"k",
+            MsgType::BID_RESPONSE => b"l",
+            MsgType::LIST_EXECUTE => b"L",
+            MsgType::LIST_STRIKE_PRICE => b"m",
+            MsgType::LIST_STATUS_REQUEST => b"M",
+            MsgType::LIST_STATUS => b"N",
+            MsgType::ALLOCATION_ACK => b"P",
+            MsgType::DONT_KNOW_TRADE => b"Q",
+            MsgType::QUOTE_REQUEST => b"R",
+            MsgType::QUOTE => b"S",
+            MsgType::SETTLEMENT_INSTRUCTIONS => b"T",
+            MsgType::MARKET_DATA_REQUEST => b"V",
+            MsgType::MARKET_DATA_SNAPSHOT_FULL_REFRESH => b"W",
+            MsgType::MARKET_DATA_INCREMENTAL_REFRESH => b"X",
+            MsgType::MARKET_DATA_REQUEST_REJECT => b"Y",
+            MsgType::QUOTE_CANCEL => b"Z",
+        }
+    }
+}
+
+impl AsRef<[u8]> for MsgType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             MsgType::HEARTBEAT => b"0",
             MsgType::TEST_REQUEST => b"1",
             MsgType::RESEND_REQUEST => b"2",
@@ -1330,6 +1456,28 @@ impl From<OrdStatus> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for OrdStatus {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            OrdStatus::NEW => b"0",
+            OrdStatus::PARTIALLY_FILLED => b"1",
+            OrdStatus::FILLED => b"2",
+            OrdStatus::DONE_FOR_DAY => b"3",
+            OrdStatus::CANCELED => b"4",
+            OrdStatus::REPLACED => b"5",
+            OrdStatus::PENDING_CANCEL => b"6",
+            OrdStatus::STOPPED => b"7",
+            OrdStatus::REJECTED => b"8",
+            OrdStatus::SUSPENDED => b"9",
+            OrdStatus::PENDING_NEW => b"A",
+            OrdStatus::CALCULATED => b"B",
+            OrdStatus::EXPIRED => b"C",
+            OrdStatus::ACCEPTED_FOR_BIDDING => b"D",
+            OrdStatus::PENDING_REPLACE => b"E",
+        }
+    }
+}
+
 impl TryFrom<char> for OrdStatus {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -1410,6 +1558,32 @@ impl From<OrdType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for OrdType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            OrdType::MARKET => b"1",
+            OrdType::LIMIT => b"2",
+            OrdType::STOP => b"3",
+            OrdType::STOP_LIMIT => b"4",
+            OrdType::MARKET_ON_CLOSE => b"5",
+            OrdType::WITH_OR_WITHOUT => b"6",
+            OrdType::LIMIT_OR_BETTER => b"7",
+            OrdType::LIMIT_WITH_OR_WITHOUT => b"8",
+            OrdType::ON_BASIS => b"9",
+            OrdType::ON_CLOSE => b"A",
+            OrdType::LIMIT_ON_CLOSE => b"B",
+            OrdType::FOREX_C => b"C",
+            OrdType::PREVIOUSLY_QUOTED => b"D",
+            OrdType::PREVIOUSLY_INDICATED => b"E",
+            OrdType::FOREX_F => b"F",
+            OrdType::FOREX_G => b"G",
+            OrdType::FOREX_H => b"H",
+            OrdType::FUNARI => b"I",
+            OrdType::PEGGED => b"P",
+        }
+    }
+}
+
 impl TryFrom<char> for OrdType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -1454,6 +1628,15 @@ impl From<PossDupFlag> for char {
 impl From<PossDupFlag> for &'static [u8] {
     fn from(a: PossDupFlag) -> &'static [u8] {
         match a {
+            PossDupFlag::NO => b"N",
+            PossDupFlag::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for PossDupFlag {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             PossDupFlag::NO => b"N",
             PossDupFlag::YES => b"Y",
         }
@@ -1533,7 +1716,36 @@ impl From<Rule80A> for &'static [u8] {
     Rule80A::SHORT_EXEMPT_TRANSACTION_FOR_MEMBER_COMPETING_MARKET_MAKER_NOT_AFFILIATED_WITH_THE_FIRM_CLEARING_THE_TRADE => b"X",
     Rule80A::PROGRAM_ORDER_NON_INDEX_ARB_FOR_OTHER_AGENCY => b"Y",
     Rule80A::SHORT_EXEMPT_TRANSACTION_FOR_NON_MEMBER_COMPETING_MARKET_MAKER => b"Z",
-    
+        }
+    }
+}
+
+impl AsRef<[u8]> for Rule80A {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+    Rule80A::AGENCY_SINGLE_ORDER => b"A",
+    Rule80A::SHORT_EXEMPT_TRANSACTION_B => b"B",
+    Rule80A::PROGRAM_ORDER_NON_INDEX_ARB_FOR_MEMBER_FIRM_ORG => b"C",
+    Rule80A::PROGRAM_ORDER_INDEX_ARB_FOR_MEMBER_FIRM_ORG => b"D",
+    Rule80A::REGISTERED_EQUITY_MARKET_MAKER_TRADES => b"E",
+    Rule80A::SHORT_EXEMPT_TRANSACTION_F => b"F",
+    Rule80A::SHORT_EXEMPT_TRANSACTION_H => b"H",
+    Rule80A::INDIVIDUAL_INVESTOR_SINGLE_ORDER => b"I",
+    Rule80A::PROGRAM_ORDER_INDEX_ARB_FOR_INDIVIDUAL_CUSTOMER => b"J",
+    Rule80A::PROGRAM_ORDER_NON_INDEX_ARB_FOR_INDIVIDUAL_CUSTOMER => b"K",
+    Rule80A::SHORT_EXEMPT_TRANSACTION_FOR_MEMBER_COMPETING_MARKET_MAKER_AFFILIATED_WITH_THE_FIRM_CLEARING_THE_TRADE => b"L",
+    Rule80A::PROGRAM_ORDER_INDEX_ARB_FOR_OTHER_MEMBER => b"M",
+    Rule80A::PROGRAM_ORDER_NON_INDEX_ARB_FOR_OTHER_MEMBER => b"N",
+    Rule80A::COMPETING_DEALER_TRADES_O => b"O",
+    Rule80A::PRINCIPAL => b"P",
+    Rule80A::COMPETING_DEALER_TRADES_R => b"R",
+    Rule80A::SPECIALIST_TRADES => b"S",
+    Rule80A::COMPETING_DEALER_TRADES_T => b"T",
+    Rule80A::PROGRAM_ORDER_INDEX_ARB_FOR_OTHER_AGENCY => b"U",
+    Rule80A::ALL_OTHER_ORDERS_AS_AGENT_FOR_OTHER_MEMBER => b"W",
+    Rule80A::SHORT_EXEMPT_TRANSACTION_FOR_MEMBER_COMPETING_MARKET_MAKER_NOT_AFFILIATED_WITH_THE_FIRM_CLEARING_THE_TRADE => b"X",
+    Rule80A::PROGRAM_ORDER_NON_INDEX_ARB_FOR_OTHER_AGENCY => b"Y",
+    Rule80A::SHORT_EXEMPT_TRANSACTION_FOR_NON_MEMBER_COMPETING_MARKET_MAKER => b"Z",
         }
     }
 }
@@ -1571,6 +1783,22 @@ impl From<Side> for char {
 impl From<Side> for &'static [u8] {
     fn from(a: Side) -> &'static [u8] {
         match a {
+            Side::BUY => b"1",
+            Side::SELL => b"2",
+            Side::BUY_MINUS => b"3",
+            Side::SELL_PLUS => b"4",
+            Side::SELL_SHORT => b"5",
+            Side::SELL_SHORT_EXEMPT => b"6",
+            Side::UNDISCLOSED => b"7",
+            Side::CROSS => b"8",
+            Side::CROSS_SHORT => b"9",
+        }
+    }
+}
+
+impl AsRef<[u8]> for Side {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             Side::BUY => b"1",
             Side::SELL => b"2",
             Side::BUY_MINUS => b"3",
@@ -1634,6 +1862,20 @@ impl From<TimeInForce> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for TimeInForce {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            TimeInForce::DAY => b"0",
+            TimeInForce::GOOD_TILL_CANCEL => b"1",
+            TimeInForce::AT_THE_OPENING => b"2",
+            TimeInForce::IMMEDIATE_OR_CANCEL => b"3",
+            TimeInForce::FILL_OR_KILL => b"4",
+            TimeInForce::GOOD_TILL_CROSSING => b"5",
+            TimeInForce::GOOD_TILL_DATE => b"6",
+        }
+    }
+}
+
 impl TryFrom<char> for TimeInForce {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -1667,6 +1909,16 @@ impl From<Urgency> for char {
 impl From<Urgency> for &'static [u8] {
     fn from(a: Urgency) -> &'static [u8] {
         match a {
+            Urgency::NORMAL => b"0",
+            Urgency::FLASH => b"1",
+            Urgency::BACKGROUND => b"2",
+        }
+    }
+}
+
+impl AsRef<[u8]> for Urgency {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             Urgency::NORMAL => b"0",
             Urgency::FLASH => b"1",
             Urgency::BACKGROUND => b"2",
@@ -1710,6 +1962,23 @@ impl From<SettlmntTyp> for char {
 impl From<SettlmntTyp> for &'static [u8] {
     fn from(a: SettlmntTyp) -> &'static [u8] {
         match a {
+            SettlmntTyp::REGULAR => b"0",
+            SettlmntTyp::CASH => b"1",
+            SettlmntTyp::NEXT_DAY => b"2",
+            SettlmntTyp::T_PLUS_2 => b"3",
+            SettlmntTyp::T_PLUS_3 => b"4",
+            SettlmntTyp::T_PLUS_4 => b"5",
+            SettlmntTyp::FUTURE => b"6",
+            SettlmntTyp::WHEN_ISSUED => b"7",
+            SettlmntTyp::SELLERS_OPTION => b"8",
+            SettlmntTyp::T_PLUS_5 => b"9",
+        }
+    }
+}
+
+impl AsRef<[u8]> for SettlmntTyp {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             SettlmntTyp::REGULAR => b"0",
             SettlmntTyp::CASH => b"1",
             SettlmntTyp::NEXT_DAY => b"2",
@@ -1773,6 +2042,19 @@ impl From<AllocTransType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for AllocTransType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            AllocTransType::NEW => b"0",
+            AllocTransType::REPLACE => b"1",
+            AllocTransType::CANCEL => b"2",
+            AllocTransType::PRELIMINARY => b"3",
+            AllocTransType::CALCULATED => b"4",
+            AllocTransType::CALCULATED_WITHOUT_PRELIMINARY => b"5",
+        }
+    }
+}
+
 impl TryFrom<char> for AllocTransType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -1804,6 +2086,15 @@ impl From<OpenClose> for char {
 impl From<OpenClose> for &'static [u8] {
     fn from(a: OpenClose) -> &'static [u8] {
         match a {
+            OpenClose::CLOSE => b"C",
+            OpenClose::OPEN => b"O",
+        }
+    }
+}
+
+impl AsRef<[u8]> for OpenClose {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             OpenClose::CLOSE => b"C",
             OpenClose::OPEN => b"O",
         }
@@ -1842,6 +2133,20 @@ impl From<ProcessCode> for char {
 impl From<ProcessCode> for &'static [u8] {
     fn from(a: ProcessCode) -> &'static [u8] {
         match a {
+            ProcessCode::REGULAR => b"0",
+            ProcessCode::SOFT_DOLLAR => b"1",
+            ProcessCode::STEP_IN => b"2",
+            ProcessCode::STEP_OUT => b"3",
+            ProcessCode::SOFT_DOLLAR_STEP_IN => b"4",
+            ProcessCode::SOFT_DOLLAR_STEP_OUT => b"5",
+            ProcessCode::PLAN_SPONSOR => b"6",
+        }
+    }
+}
+
+impl AsRef<[u8]> for ProcessCode {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             ProcessCode::REGULAR => b"0",
             ProcessCode::SOFT_DOLLAR => b"1",
             ProcessCode::STEP_IN => b"2",
@@ -1945,6 +2250,16 @@ impl From<EmailType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for EmailType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            EmailType::NEW => b"0",
+            EmailType::REPLY => b"1",
+            EmailType::ADMIN_REPLY => b"2",
+        }
+    }
+}
+
 impl TryFrom<char> for EmailType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -1973,6 +2288,15 @@ impl From<PossResend> for char {
 impl From<PossResend> for &'static [u8] {
     fn from(a: PossResend) -> &'static [u8] {
         match a {
+            PossResend::NO => b"N",
+            PossResend::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for PossResend {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             PossResend::NO => b"N",
             PossResend::YES => b"Y",
         }
@@ -2122,6 +2446,29 @@ impl From<IOIQualifier> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for IOIQualifier {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            IOIQualifier::ALL_OR_NONE => b"A",
+            IOIQualifier::AT_THE_CLOSE => b"C",
+            IOIQualifier::IN_TOUCH_WITH => b"I",
+            IOIQualifier::LIMIT => b"L",
+            IOIQualifier::MORE_BEHIND => b"M",
+            IOIQualifier::AT_THE_OPEN => b"O",
+            IOIQualifier::TAKING_A_POSITION => b"P",
+            IOIQualifier::AT_THE_MARKET => b"Q",
+            IOIQualifier::READY_TO_TRADE => b"R",
+            IOIQualifier::PORTFOLIO_SHOW_N => b"S",
+            IOIQualifier::THROUGH_THE_DAY => b"T",
+            IOIQualifier::VERSUS => b"V",
+            IOIQualifier::INDICATION => b"W",
+            IOIQualifier::CROSSING_OPPORTUNITY => b"X",
+            IOIQualifier::AT_THE_MIDPOINT => b"Y",
+            IOIQualifier::PRE_OPEN => b"Z",
+        }
+    }
+}
+
 impl TryFrom<char> for IOIQualifier {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2169,6 +2516,15 @@ impl From<ReportToExch> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for ReportToExch {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            ReportToExch::NO => b"N",
+            ReportToExch::YES => b"Y",
+        }
+    }
+}
+
 impl TryFrom<char> for ReportToExch {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2196,6 +2552,15 @@ impl From<LocateReqd> for char {
 impl From<LocateReqd> for &'static [u8] {
     fn from(a: LocateReqd) -> &'static [u8] {
         match a {
+            LocateReqd::NO => b"N",
+            LocateReqd::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for LocateReqd {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             LocateReqd::NO => b"N",
             LocateReqd::YES => b"Y",
         }
@@ -2235,6 +2600,15 @@ impl From<ForexReq> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for ForexReq {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            ForexReq::NO => b"N",
+            ForexReq::YES => b"Y",
+        }
+    }
+}
+
 impl TryFrom<char> for ForexReq {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2262,6 +2636,15 @@ impl From<GapFillFlag> for char {
 impl From<GapFillFlag> for &'static [u8] {
     fn from(a: GapFillFlag) -> &'static [u8] {
         match a {
+            GapFillFlag::NO => b"N",
+            GapFillFlag::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for GapFillFlag {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             GapFillFlag::NO => b"N",
             GapFillFlag::YES => b"Y",
         }
@@ -2309,6 +2692,19 @@ impl From<DKReason> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for DKReason {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            DKReason::UNKNOWN_SYMBOL => b"A",
+            DKReason::WRONG_SIDE => b"B",
+            DKReason::QUANTITY_EXCEEDS_ORDER => b"C",
+            DKReason::NO_MATCHING_ORDER => b"D",
+            DKReason::PRICE_EXCEEDS_LIMIT => b"E",
+            DKReason::OTHER => b"Z",
+        }
+    }
+}
+
 impl TryFrom<char> for DKReason {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2340,6 +2736,15 @@ impl From<IOINaturalFlag> for char {
 impl From<IOINaturalFlag> for &'static [u8] {
     fn from(a: IOINaturalFlag) -> &'static [u8] {
         match a {
+            IOINaturalFlag::NO => b"N",
+            IOINaturalFlag::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for IOINaturalFlag {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             IOINaturalFlag::NO => b"N",
             IOINaturalFlag::YES => b"Y",
         }
@@ -2393,6 +2798,22 @@ impl From<MiscFeeType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for MiscFeeType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            MiscFeeType::REGULATORY => b"1",
+            MiscFeeType::TAX => b"2",
+            MiscFeeType::LOCAL_COMMISSION => b"3",
+            MiscFeeType::EXCHANGE_FEES => b"4",
+            MiscFeeType::STAMP => b"5",
+            MiscFeeType::LEVY => b"6",
+            MiscFeeType::OTHER => b"7",
+            MiscFeeType::MARKUP => b"8",
+            MiscFeeType::CONSUMPTION_TAX => b"9",
+        }
+    }
+}
+
 impl TryFrom<char> for MiscFeeType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2427,6 +2848,15 @@ impl From<ResetSeqNumFlag> for char {
 impl From<ResetSeqNumFlag> for &'static [u8] {
     fn from(a: ResetSeqNumFlag) -> &'static [u8] {
         match a {
+            ResetSeqNumFlag::NO => b"N",
+            ResetSeqNumFlag::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for ResetSeqNumFlag {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             ResetSeqNumFlag::NO => b"N",
             ResetSeqNumFlag::YES => b"Y",
         }
@@ -2492,6 +2922,28 @@ impl From<ExecType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for ExecType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            ExecType::NEW => b"0",
+            ExecType::PARTIAL_FILL => b"1",
+            ExecType::FILL => b"2",
+            ExecType::DONE_FOR_DAY => b"3",
+            ExecType::CANCELED => b"4",
+            ExecType::REPLACE => b"5",
+            ExecType::PENDING_CANCEL => b"6",
+            ExecType::STOPPED => b"7",
+            ExecType::REJECTED => b"8",
+            ExecType::SUSPENDED => b"9",
+            ExecType::PENDING_NEW => b"A",
+            ExecType::CALCULATED => b"B",
+            ExecType::EXPIRED => b"C",
+            ExecType::RESTATED => b"D",
+            ExecType::PENDING_REPLACE => b"E",
+        }
+    }
+}
+
 impl TryFrom<char> for ExecType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2538,6 +2990,15 @@ impl From<SettlCurrFxRateCalc> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for SettlCurrFxRateCalc {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            SettlCurrFxRateCalc::MULTIPLY => b"M",
+            SettlCurrFxRateCalc::DIVIDE => b"D",
+        }
+    }
+}
+
 impl TryFrom<char> for SettlCurrFxRateCalc {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2567,6 +3028,17 @@ impl From<SettlInstMode> for char {
 impl From<SettlInstMode> for &'static [u8] {
     fn from(a: SettlInstMode) -> &'static [u8] {
         match a {
+            SettlInstMode::DEFAULT => b"0",
+            SettlInstMode::STANDING_INSTRUCTIONS_PROVIDED => b"1",
+            SettlInstMode::SPECIFIC_ALLOCATION_ACCOUNT_OVERRIDING => b"2",
+            SettlInstMode::SPECIFIC_ALLOCATION_ACCOUNT_STANDING => b"3",
+        }
+    }
+}
+
+impl AsRef<[u8]> for SettlInstMode {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             SettlInstMode::DEFAULT => b"0",
             SettlInstMode::STANDING_INSTRUCTIONS_PROVIDED => b"1",
             SettlInstMode::SPECIFIC_ALLOCATION_ACCOUNT_OVERRIDING => b"2",
@@ -2612,6 +3084,16 @@ impl From<SettlInstTransType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for SettlInstTransType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            SettlInstTransType::CANCEL => b"C",
+            SettlInstTransType::NEW => b"N",
+            SettlInstTransType::REPLACE => b"R",
+        }
+    }
+}
+
 impl TryFrom<char> for SettlInstTransType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2640,6 +3122,15 @@ impl From<SettlInstSource> for char {
 impl From<SettlInstSource> for &'static [u8] {
     fn from(a: SettlInstSource) -> &'static [u8] {
         match a {
+            SettlInstSource::BROKERS_INSTRUCTIONS => b"1",
+            SettlInstSource::INSTITUTIONS_INSTRUCTIONS => b"2",
+        }
+    }
+}
+
+impl AsRef<[u8]> for SettlInstSource {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             SettlInstSource::BROKERS_INSTRUCTIONS => b"1",
             SettlInstSource::INSTITUTIONS_INSTRUCTIONS => b"2",
         }
@@ -2773,6 +3264,15 @@ impl From<NotifyBrokerOfCredit> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for NotifyBrokerOfCredit {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            NotifyBrokerOfCredit::NO => b"N",
+            NotifyBrokerOfCredit::YES => b"Y",
+        }
+    }
+}
+
 impl TryFrom<char> for NotifyBrokerOfCredit {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2862,6 +3362,22 @@ impl From<Benchmark> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for Benchmark {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            Benchmark::CURVE => b"1",
+            Benchmark::FIVE_YR => b"2",
+            Benchmark::OLD_5 => b"3",
+            Benchmark::TEN_YR => b"4",
+            Benchmark::OLD_10 => b"5",
+            Benchmark::THIRTY_YR => b"6",
+            Benchmark::OLD_30 => b"7",
+            Benchmark::THREE_MO_LIBOR => b"8",
+            Benchmark::SIX_MO_LIBOR => b"9",
+        }
+    }
+}
+
 impl TryFrom<char> for Benchmark {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2897,6 +3413,16 @@ impl From<SubscriptionRequestType> for char {
 impl From<SubscriptionRequestType> for &'static [u8] {
     fn from(a: SubscriptionRequestType) -> &'static [u8] {
         match a {
+            SubscriptionRequestType::SNAPSHOT => b"0",
+            SubscriptionRequestType::SNAPSHOT_PLUS_UPDATES => b"1",
+            SubscriptionRequestType::DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST => b"2",
+        }
+    }
+}
+
+impl AsRef<[u8]> for SubscriptionRequestType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             SubscriptionRequestType::SNAPSHOT => b"0",
             SubscriptionRequestType::SNAPSHOT_PLUS_UPDATES => b"1",
             SubscriptionRequestType::DISABLE_PREVIOUS_SNAPSHOT_PLUS_UPDATE_REQUEST => b"2",
@@ -2956,6 +3482,15 @@ impl From<AggregatedBook> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for AggregatedBook {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            AggregatedBook::NO => b"N",
+            AggregatedBook::YES => b"Y",
+        }
+    }
+}
+
 impl TryFrom<char> for AggregatedBook {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -2991,6 +3526,23 @@ impl From<MDEntryType> for char {
 impl From<MDEntryType> for &'static [u8] {
     fn from(a: MDEntryType) -> &'static [u8] {
         match a {
+            MDEntryType::BID => b"0",
+            MDEntryType::OFFER => b"1",
+            MDEntryType::TRADE => b"2",
+            MDEntryType::INDEX_VALUE => b"3",
+            MDEntryType::OPENING_PRICE => b"4",
+            MDEntryType::CLOSING_PRICE => b"5",
+            MDEntryType::SETTLEMENT_PRICE => b"6",
+            MDEntryType::TRADING_SESSION_HIGH_PRICE => b"7",
+            MDEntryType::TRADING_SESSION_LOW_PRICE => b"8",
+            MDEntryType::TRADING_SESSION_VWAP_PRICE => b"9",
+        }
+    }
+}
+
+impl AsRef<[u8]> for MDEntryType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             MDEntryType::BID => b"0",
             MDEntryType::OFFER => b"1",
             MDEntryType::TRADE => b"2",
@@ -3050,6 +3602,17 @@ impl From<TickDirection> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for TickDirection {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            TickDirection::PLUS_TICK => b"0",
+            TickDirection::ZERO_PLUS_TICK => b"1",
+            TickDirection::MINUS_TICK => b"2",
+            TickDirection::ZERO_MINUS_TICK => b"3",
+        }
+    }
+}
+
 impl TryFrom<char> for TickDirection {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3080,6 +3643,16 @@ impl From<MDUpdateAction> for char {
 impl From<MDUpdateAction> for &'static [u8] {
     fn from(a: MDUpdateAction) -> &'static [u8] {
         match a {
+            MDUpdateAction::NEW => b"0",
+            MDUpdateAction::CHANGE => b"1",
+            MDUpdateAction::DELETE => b"2",
+        }
+    }
+}
+
+impl AsRef<[u8]> for MDUpdateAction {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             MDUpdateAction::NEW => b"0",
             MDUpdateAction::CHANGE => b"1",
             MDUpdateAction::DELETE => b"2",
@@ -3135,6 +3708,22 @@ impl From<MDReqRejReason> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for MDReqRejReason {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            MDReqRejReason::UNKNOWN_SYMBOL => b"0",
+            MDReqRejReason::DUPLICATE_MDREQID => b"1",
+            MDReqRejReason::INSUFFICIENT_BANDWIDTH => b"2",
+            MDReqRejReason::INSUFFICIENT_PERMISSIONS => b"3",
+            MDReqRejReason::UNSUPPORTED_SUBSCRIPTIONREQUESTTYPE => b"4",
+            MDReqRejReason::UNSUPPORTED_MARKETDEPTH => b"5",
+            MDReqRejReason::UNSUPPORTED_MDUPDATETYPE => b"6",
+            MDReqRejReason::UNSUPPORTED_AGGREGATEDBOOK => b"7",
+            MDReqRejReason::UNSUPPORTED_MDENTRYTYPE => b"8",
+        }
+    }
+}
+
 impl TryFrom<char> for MDReqRejReason {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3169,6 +3758,15 @@ impl From<DeleteReason> for char {
 impl From<DeleteReason> for &'static [u8] {
     fn from(a: DeleteReason) -> &'static [u8] {
         match a {
+            DeleteReason::CANCELATION => b"0",
+            DeleteReason::ERROR => b"1",
+        }
+    }
+}
+
+impl AsRef<[u8]> for DeleteReason {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             DeleteReason::CANCELATION => b"0",
             DeleteReason::ERROR => b"1",
         }
@@ -3210,6 +3808,16 @@ impl From<OpenCloseSettleFlag> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for OpenCloseSettleFlag {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            OpenCloseSettleFlag::DAILY_OPEN => b"0",
+            OpenCloseSettleFlag::SESSION_OPEN => b"1",
+            OpenCloseSettleFlag::DELIVERY_SETTLEMENT_PRICE => b"2",
+        }
+    }
+}
+
 impl TryFrom<char> for OpenCloseSettleFlag {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3237,6 +3845,14 @@ impl From<FinancialStatus> for char {
 impl From<FinancialStatus> for &'static [u8] {
     fn from(a: FinancialStatus) -> &'static [u8] {
         match a {
+            FinancialStatus::BANKRUPT => b"1",
+        }
+    }
+}
+
+impl AsRef<[u8]> for FinancialStatus {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             FinancialStatus::BANKRUPT => b"1",
         }
     }
@@ -3271,6 +3887,18 @@ impl From<CorporateAction> for char {
 impl From<CorporateAction> for &'static [u8] {
     fn from(a: CorporateAction) -> &'static [u8] {
         match a {
+            CorporateAction::EX_DIVIDEND => b"A",
+            CorporateAction::EX_DISTRIBUTION => b"B",
+            CorporateAction::EX_RIGHTS => b"C",
+            CorporateAction::NEW => b"D",
+            CorporateAction::EX_INTEREST => b"E",
+        }
+    }
+}
+
+impl AsRef<[u8]> for CorporateAction {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             CorporateAction::EX_DIVIDEND => b"A",
             CorporateAction::EX_DISTRIBUTION => b"B",
             CorporateAction::EX_RIGHTS => b"C",
@@ -3482,6 +4110,15 @@ impl From<UnsolicitedIndicator> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for UnsolicitedIndicator {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            UnsolicitedIndicator::NO => b"N",
+            UnsolicitedIndicator::YES => b"Y",
+        }
+    }
+}
+
 impl TryFrom<char> for UnsolicitedIndicator {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3575,6 +4212,19 @@ impl From<HaltReasonChar> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for HaltReasonChar {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            HaltReasonChar::NEWS_DISSEMINATION => b"D",
+            HaltReasonChar::ORDER_INFLUX => b"E",
+            HaltReasonChar::ORDER_IMBALANCE => b"I",
+            HaltReasonChar::ADDITIONAL_INFORMATION => b"M",
+            HaltReasonChar::NEWS_PENDING => b"P",
+            HaltReasonChar::EQUIPMENT_CHANGEOVER => b"X",
+        }
+    }
+}
+
 impl TryFrom<char> for HaltReasonChar {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3612,6 +4262,15 @@ impl From<InViewOfCommon> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for InViewOfCommon {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            InViewOfCommon::NO => b"N",
+            InViewOfCommon::YES => b"Y",
+        }
+    }
+}
+
 impl TryFrom<char> for InViewOfCommon {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3639,6 +4298,15 @@ impl From<DueToRelated> for char {
 impl From<DueToRelated> for &'static [u8] {
     fn from(a: DueToRelated) -> &'static [u8] {
         match a {
+            DueToRelated::NO => b"N",
+            DueToRelated::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for DueToRelated {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             DueToRelated::NO => b"N",
             DueToRelated::YES => b"Y",
         }
@@ -3832,6 +4500,15 @@ impl From<BidRequestTransType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for BidRequestTransType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            BidRequestTransType::CANCEL => b"C",
+            BidRequestTransType::NO => b"N",
+        }
+    }
+}
+
 impl TryFrom<char> for BidRequestTransType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3859,6 +4536,15 @@ impl From<SolicitedFlag> for char {
 impl From<SolicitedFlag> for &'static [u8] {
     fn from(a: SolicitedFlag) -> &'static [u8] {
         match a {
+            SolicitedFlag::NO => b"N",
+            SolicitedFlag::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for SolicitedFlag {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             SolicitedFlag::NO => b"N",
             SolicitedFlag::YES => b"Y",
         }
@@ -3950,6 +4636,15 @@ impl From<MsgDirection> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for MsgDirection {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            MsgDirection::RECEIVE => b"R",
+            MsgDirection::SEND => b"S",
+        }
+    }
+}
+
 impl TryFrom<char> for MsgDirection {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -3981,6 +4676,19 @@ impl From<DiscretionInst> for char {
 impl From<DiscretionInst> for &'static [u8] {
     fn from(a: DiscretionInst) -> &'static [u8] {
         match a {
+            DiscretionInst::RELATED_TO_DISPLAYED_PRICE => b"0",
+            DiscretionInst::RELATED_TO_MARKET_PRICE => b"1",
+            DiscretionInst::RELATED_TO_PRIMARY_PRICE => b"2",
+            DiscretionInst::RELATED_TO_LOCAL_PRIMARY_PRICE => b"3",
+            DiscretionInst::RELATED_TO_MIDPOINT_PRICE => b"4",
+            DiscretionInst::RELATED_TO_LAST_TRADE_PRICE => b"5",
+        }
+    }
+}
+
+impl AsRef<[u8]> for DiscretionInst {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             DiscretionInst::RELATED_TO_DISPLAYED_PRICE => b"0",
             DiscretionInst::RELATED_TO_MARKET_PRICE => b"1",
             DiscretionInst::RELATED_TO_PRIMARY_PRICE => b"2",
@@ -4044,6 +4752,15 @@ impl From<ExchangeForPhysical> for char {
 impl From<ExchangeForPhysical> for &'static [u8] {
     fn from(a: ExchangeForPhysical) -> &'static [u8] {
         match a {
+            ExchangeForPhysical::NO => b"N",
+            ExchangeForPhysical::YES => b"Y",
+        }
+    }
+}
+
+impl AsRef<[u8]> for ExchangeForPhysical {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             ExchangeForPhysical::NO => b"N",
             ExchangeForPhysical::YES => b"Y",
         }
@@ -4124,6 +4841,17 @@ impl From<TradeType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for TradeType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            TradeType::AGENCY => b"A",
+            TradeType::VWAP_GUARANTEE => b"G",
+            TradeType::GUARANTEED_CLOSE => b"J",
+            TradeType::RISK_TRADE => b"R",
+        }
+    }
+}
+
 impl TryFrom<char> for TradeType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -4164,6 +4892,26 @@ impl From<BasisPxType> for char {
 impl From<BasisPxType> for &'static [u8] {
     fn from(a: BasisPxType) -> &'static [u8] {
         match a {
+            BasisPxType::CLOSING_PRICE_AT_MORNING_SESSION => b"2",
+            BasisPxType::CLOSING_PRICE => b"3",
+            BasisPxType::CURRENT_PRICE => b"4",
+            BasisPxType::SQ => b"5",
+            BasisPxType::VWAP_THROUGH_A_DAY => b"6",
+            BasisPxType::VWAP_THROUGH_A_MORNING_SESSION => b"7",
+            BasisPxType::VWAP_THROUGH_AN_AFTERNOON_SESSION => b"8",
+            BasisPxType::VWAP_THROUGH_A_DAY_EXCEPT_YORI => b"9",
+            BasisPxType::VWAP_THROUGH_A_MORNING_SESSION_EXCEPT_YORI => b"A",
+            BasisPxType::VWAP_THROUGH_AN_AFTERNOON_SESSION_EXCEPT_YORI => b"B",
+            BasisPxType::STRIKE => b"C",
+            BasisPxType::OPEN => b"D",
+            BasisPxType::OTHERS => b"Z",
+        }
+    }
+}
+
+impl AsRef<[u8]> for BasisPxType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             BasisPxType::CLOSING_PRICE_AT_MORNING_SESSION => b"2",
             BasisPxType::CLOSING_PRICE => b"3",
             BasisPxType::CURRENT_PRICE => b"4",
@@ -4283,6 +5031,15 @@ impl From<ListExecInstType> for &'static [u8] {
     }
 }
 
+impl AsRef<[u8]> for ListExecInstType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            ListExecInstType::IMMEDIATE => b"1",
+            ListExecInstType::WAIT_FOR_EXECUTE_INSTRUCTION => b"2",
+        }
+    }
+}
+
 impl TryFrom<char> for ListExecInstType {
     type Error = DecodeError;
     fn try_from(c: char) -> Result<Self, Self::Error> {
@@ -4310,6 +5067,15 @@ impl From<CxlRejResponseTo> for char {
 impl From<CxlRejResponseTo> for &'static [u8] {
     fn from(a: CxlRejResponseTo) -> &'static [u8] {
         match a {
+            CxlRejResponseTo::ORDER_CANCEL_REQUEST => b"1",
+            CxlRejResponseTo::ORDER_CANCEL_REPLACE_REQUEST => b"2",
+        }
+    }
+}
+
+impl AsRef<[u8]> for CxlRejResponseTo {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             CxlRejResponseTo::ORDER_CANCEL_REQUEST => b"1",
             CxlRejResponseTo::ORDER_CANCEL_REPLACE_REQUEST => b"2",
         }
@@ -4344,6 +5110,16 @@ impl From<MultiLegReportingType> for char {
 impl From<MultiLegReportingType> for &'static [u8] {
     fn from(a: MultiLegReportingType) -> &'static [u8] {
         match a {
+            MultiLegReportingType::SINGLE_SECURITY => b"1",
+            MultiLegReportingType::INDIVIDUAL_LEG_OF_A_MULTI_LEG_SECURITY => b"2",
+            MultiLegReportingType::MULTI_LEG_SECURITY => b"3",
+        }
+    }
+}
+
+impl AsRef<[u8]> for MultiLegReportingType {
+    fn as_ref(&self) -> &[u8] {
+        match self {
             MultiLegReportingType::SINGLE_SECURITY => b"1",
             MultiLegReportingType::INDIVIDUAL_LEG_OF_A_MULTI_LEG_SECURITY => b"2",
             MultiLegReportingType::MULTI_LEG_SECURITY => b"3",

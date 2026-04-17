@@ -81,6 +81,18 @@ impl From&lt;<xsl:value-of select="./@name" />&gt; for &amp;'static [u8] {
     }
 }
 
+    <xsl:if test="*">
+impl AsRef&lt;[u8]&gt; for <xsl:value-of select="./@name" /> {
+    fn as_ref(&amp;self) -> &amp;[u8] {
+        match self {
+    <xsl:for-each select="value">
+    <xsl:value-of select="../@name"/>::<xsl:value-of select="./@description"/> => b"<xsl:value-of select="./@enum"/>",
+    </xsl:for-each>
+        }
+    }
+}
+</xsl:if>
+
 impl TryFrom&lt;char&gt; for <xsl:value-of select="./@name" /> {
     type Error = DecodeError;
     fn try_from(c : char) -> Result&lt;Self, Self::Error&gt; {

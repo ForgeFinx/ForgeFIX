@@ -22,11 +22,11 @@
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE)
-//!     .push(Tags::Account, b"my-account-num")
-//!     .push(Tags::OrderQty, SerializedInt::from(1u32).as_bytes())
-//!     .push(Tags::OrdType, fields::OrdType::LIMIT.into())
-//!     .push(Tags::Price, b"10.42")
-//!     .push(Tags::Symbol, b"TICKER SYMBOL");
+//!     .push(Tags::Account, "my-account-num")
+//!     .push(Tags::OrderQty, SerializedInt::from(1u32))
+//!     .push(Tags::OrdType, fields::OrdType::LIMIT)
+//!     .push(Tags::Price, "10.42")
+//!     .push(Tags::Symbol, "TICKER SYMBOL");
 //!
 //! # Ok(())
 //! # }
@@ -75,7 +75,7 @@ pub fn formatted_time() -> String {
 /// let mut builder = MessageBuilder::new("FIX.4.2", MsgType::ORDER_SINGLE)
 ///     .push(Tags::Account, b"my-account-num")
 ///     .push(Tags::OrderQty, SerializedInt::from(1u32).as_bytes())
-///     .push(Tags::OrdType, fields::OrdType::LIMIT.into())
+///     .push(Tags::OrdType, fields::OrdType::LIMIT)
 ///     .push(Tags::Price, b"10.42");
 ///
 /// builder.push_mut(Tags::Symbol, b"TICKER SYMBOL");
@@ -121,16 +121,16 @@ impl MessageBuilder {
     /// with this function for `tag_param`.
     ///
     /// [`Tags`]: ../fields/enum.Tags.html
-    pub fn push(mut self, tag_param: impl Into<u32>, value: &[u8]) -> Self {
+    pub fn push(mut self, tag_param: impl Into<u32>, value: impl AsRef<[u8]>) -> Self {
         self.push_mut(tag_param, value);
         self
     }
 
-    pub fn push_mut(&mut self, tag_param: impl Into<u32>, value: &[u8]) {
+    pub fn push_mut(&mut self, tag_param: impl Into<u32>, value: impl AsRef<[u8]>) {
         let tag: u32 = tag_param.into();
         let _ = self.write_bytes(tag.to_string().as_bytes());
         let _ = self.write_bytes(b"=");
-        let _ = self.write_bytes(value);
+        let _ = self.write_bytes(value.as_ref());
         let _ = self.write_bytes(SOH);
     }
 
@@ -226,6 +226,11 @@ impl From<u64> for SerializedInt {
         }
         ser.1 = cursor;
         ser
+    }
+}
+impl AsRef<[u8]> for SerializedInt {
+    fn as_ref(&self) -> &[u8] {
+        self.as_bytes()
     }
 }
 
