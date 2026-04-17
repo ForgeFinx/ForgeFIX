@@ -334,8 +334,7 @@ impl<'a> Iterator for FieldIter<'a> {
 /// ## Return Values
 ///
 /// * [`header`], [`body`] and [`trailer`] -- Return `Ok(true)` to signal that parsing should
-/// continue. Return `Ok(false)` to signal that parsing should end. Return `Err` if an error
-/// occured that should cause parsing to stop.
+/// continue. Return `Ok(false)` to signal that parsing should end. Return `Err` if an error occured that should cause parsing to stop.
 ///
 /// * [`parse_error`] -- Convert the [`MessageParseError`] into a `Result<(), Self::Err>`
 ///

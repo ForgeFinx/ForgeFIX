@@ -20,7 +20,7 @@ use crate::fix::session::{Event, MyStateMachine};
 use crate::fix::stopwatch::FixTimeouts;
 use crate::fix::validate::validate_msg;
 use crate::log::Logger;
-use crate::{FixEngineType, Request, SessionSettings};
+use crate::{Request, SessionSettings};
 use store::Store;
 
 use fields::MsgType;
@@ -569,8 +569,6 @@ async fn handle_msg(
             }
             state_machine.handle(&Event::ResendRequestReceived(
                 cb.msg_seq_num,
-                b,
-                e,
                 to_poss_dup_flag(cb.poss_dup_flag),
             ));
         }
@@ -600,7 +598,7 @@ async fn handle_msg(
             state_machine.sequences.peek_outgoing(),
             state_machine.sequences.peek_incoming(),
         )
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        .map_err(std::io::Error::other)?;
 
     Ok(())
 }
@@ -671,7 +669,7 @@ async fn send_outgoing_messages(
                 state_machine.sequences.peek_outgoing(),
                 state_machine.sequences.peek_incoming(),
             )
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
 
         store
             .store_outgoing(
@@ -680,7 +678,7 @@ async fn send_outgoing_messages(
                 Instant::now(),
                 Arc::new(msg_buf),
             )
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
 
         if is_logout {
             state_machine.outbox_clear();
@@ -703,7 +701,7 @@ async fn resend_messages(
 ) -> Result<(), SessionError> {
     messages.sort_by(|(a, _), (b, _)| a.cmp(b));
     let mut session_msg_count = 0;
-    for (_, (msg_seq_num, msg)) in messages.iter().enumerate() {
+    for (msg_seq_num, msg) in messages.iter() {
         let transformer = Transformer::try_from(msg.clone())?;
         let msg_type =
             MsgType::try_from(transformer.msg_type).or(Err(SessionError::ResendError))?;

@@ -88,10 +88,7 @@ fn parse_checksum(msg_buf: &[u8]) -> Option<i32> {
         return None;
     }
 
-    match std::str::from_utf8(&tail[3..6]).unwrap_or("").parse() {
-        Ok(v) => Some(v),
-        _ => None,
-    }
+    std::str::from_utf8(&tail[3..6]).unwrap_or("").parse().ok()
 }
 
 fn checksum_matches(msg: &[u8], checksum: i32) -> bool {

@@ -1,7 +1,7 @@
+use crate::fix::SessionError;
 use crate::fix::checksum::AsyncChecksumWriter;
 use crate::fix::decode::ParsedPeek;
-use crate::fix::encode::{SerializedInt, SOH, TIME_FORMAT};
-use crate::fix::SessionError;
+use crate::fix::encode::{SOH, SerializedInt, TIME_FORMAT};
 use anyhow::Result;
 use chrono::offset::Utc;
 use std::str;
@@ -25,7 +25,7 @@ impl Transformer {
         &self.msg[self.sending_time_start..self.sending_time_end]
     }
 
-    pub(super) async fn build_async<'a, W>(self, sink: W) -> Result<(), SessionError>
+    pub(super) async fn build_async<W>(self, sink: W) -> Result<(), SessionError>
     where
         W: AsyncWrite + Unpin,
     {

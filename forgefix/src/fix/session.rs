@@ -59,8 +59,8 @@ pub(super) enum Event {
     },
     ApplicationMessageReceived(u32, Option<PossDupFlag>),
     SendHeartbeat,
-    SendTestRequest(u32),
-    ResendRequestReceived(u32, u32, u32, Option<PossDupFlag>),
+    SendTestRequest,
+    ResendRequestReceived(u32, Option<PossDupFlag>),
     RejectReceived(u32, Option<PossDupFlag>),
     LogoutExpired,
 }
@@ -100,16 +100,6 @@ impl Event {
 
     fn is_logout(&self) -> bool {
         matches!(self, Event::LogoutReceived(..))
-    }
-
-    fn is_sequence_reset(&self) -> bool {
-        matches!(
-            self,
-            Event::SequenceResetReceived {
-                gap_fill: Some(GapFillFlag::NO),
-                ..
-            } | Event::SequenceResetReceived { gap_fill: None, .. }
-        )
     }
 }
 
@@ -251,7 +241,7 @@ impl MyStateMachine {
                 self.outbox_push(builder);
                 Response::Transition(State::End)
             }
-            Event::SendTestRequest(_) => {
+            Event::SendTestRequest => {
                 let builder = MessageBuilder::new(&self.begin_string, MsgType::TEST_REQUEST)
                     .push(Tags::TestReqID, b"TEST");
                 self.outbox_push(builder);
@@ -324,7 +314,7 @@ impl MyStateMachine {
                 }
                 Response::Transition(State::LoggedIn)
             }
-            Event::SendHeartbeat | Event::SendTestRequest(_) => Response::Transition(State::Error),
+            Event::SendHeartbeat | Event::SendTestRequest => Response::Transition(State::Error),
             _ => self.logged_in(event),
         }
     }
@@ -526,9 +516,9 @@ impl MyStateMachine {
         match event {
             Event::LogoutReceived(..) => Response::Transition(State::End),
             Event::LogoutExpired => Response::Transition(State::Error),
-            Event::SessionErrorReceived { .. }
-            | Event::SendTestRequest { .. }
-            | Event::SendHeartbeat => Response::Transition(State::Error),
+            Event::SessionErrorReceived { .. } | Event::SendTestRequest | Event::SendHeartbeat => {
+                Response::Transition(State::Error)
+            }
             _ => Response::Handled,
         }
     }
@@ -541,11 +531,11 @@ pub(super) fn should_pass_app_message(state_machine: &MyStateMachine, msg_seq_nu
     msg_seq_num == state_machine.sequences.peek_incoming()
         && !matches!(
             state_machine.state(),
-            State::Start {}
-                | State::End {}
-                | State::Error {}
-                | State::Connected {}
-                | State::LogonSent {}
+            State::Start
+                | State::End
+                | State::Error
+                | State::Connected
+                | State::LogonSent
         )
 }
 

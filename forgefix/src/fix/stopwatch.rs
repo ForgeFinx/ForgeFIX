@@ -1,5 +1,5 @@
 use crate::fix::session::Event;
-use tokio::time::{sleep_until, Duration, Instant, Sleep};
+use tokio::time::{Duration, Instant, Sleep, sleep_until};
 
 pub(super) struct Timeout {
     next_instant: Instant,
@@ -53,7 +53,7 @@ impl FixTimeouts {
         let test_request_timeout = Timeout::new(
             next_test_request_timeout,
             test_request_dur,
-            Event::SendTestRequest(0),
+            Event::SendTestRequest,
         );
         let logout_timeout = Timeout::new(next_logout_timeout, logout_dur, Event::LogoutExpired);
 

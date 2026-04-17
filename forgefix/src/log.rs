@@ -157,7 +157,7 @@ fn do_log_message(logs: &mut File, buf: String, time: DateTime<Local>) -> Result
 }
 
 fn do_disconnect(logs: &mut File) -> Result<(), io::Error> {
-    Ok(logs.flush()?)
+    logs.flush()
 }
 
 fn io_err<T>(_: T) -> io::Error {

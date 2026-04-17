@@ -92,7 +92,7 @@ pub struct MessageBuilder {
     main_buffer: Cursor<Vec<u8>>,
 }
 
-pub(super) const SOH: &[u8] = &[b'\x01'];
+pub(super) const SOH: &[u8] = b"\x01";
 
 impl MessageBuilder {
     /// Creates a new [`MessageBuilder`] with `begin_string` and `msg_type`. It is helpful to use
@@ -140,7 +140,7 @@ impl MessageBuilder {
         body_len + msg_type_len
     }
 
-    pub(super) async fn build_async<'a, W>(
+    pub(super) async fn build_async<W>(
         &self,
         sink: W,
         msg_seq_num: u32,

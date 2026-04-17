@@ -111,7 +111,6 @@ pub mod log;
 use fix::encode::MessageBuilder;
 use fix::mem::MsgBuf;
 
-use std::io;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -536,12 +535,6 @@ impl EngineHandle {
     pub fn begin_string(&self) -> Arc<String> {
         Arc::clone(&self.begin_string)
     }
-}
-
-#[derive(Clone)]
-enum FixEngineType {
-    Client,
-    Server,
 }
 
 #[derive(Copy, Clone)]
