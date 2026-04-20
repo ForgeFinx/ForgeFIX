@@ -117,18 +117,18 @@ impl BlockingFixApplicationClient {
     ) -> Result<BlockingFixApplicationClient, ApplicationError> {
         let mut fix_app_initiator =
             EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?;
-        let (inner, mut event_receiver) = fix_app_initiator.connect_sync()?;
+        let (inner, mut event_receiver) = fix_app_initiator.start_sync()?;
         event_receiver.close();
 
         Ok(BlockingFixApplicationClient { inner })
     }
 
     pub fn start(&mut self) -> Result<(), ApplicationError> {
-        self.inner.start_sync()
+        self.inner.logon_sync()
     }
 
     pub fn end(&mut self) -> Result<(), ApplicationError> {
-        self.inner.end_sync()
+        self.inner.logout_sync()
     }
 
     pub fn send_message(&mut self, builder: MessageBuilder) -> Result<(), ApplicationError> {

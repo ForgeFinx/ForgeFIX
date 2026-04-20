@@ -129,9 +129,9 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
             forgefix::EngineFactory::acceptor(settings, forgefix::log::FileLoggerFactory)?;
 
         loop {
-            let (fix_handle, mut event_receiver) = fix_server.connect().await?;
+            let (fix_handle, mut event_receiver) = fix_server.start().await?;
             let h = tokio::spawn(async move {
-                let _ = fix_handle.start_async().await;
+                let _ = fix_handle.logon_async().await;
                 while event_receiver.recv().await.is_some() {
                     let default_msg_type: char = fix::fields::MsgType::ORDER_SINGLE.into();
                     let builder = fix::encode::MessageBuilder::new(
@@ -154,7 +154,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
 
         let (fix_handle, mut event_receiver) =
             forgefix::EngineFactory::initiator(settings, forgefix::log::FileLoggerFactory)?
-                .connect()
+                .start()
                 .await?;
 
         tokio::spawn(async move {
@@ -163,7 +163,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
             }
         });
 
-        fix_handle.start_async().await?;
+        fix_handle.logon_async().await?;
 
         let _ = send_order(
             &fix_handle,
@@ -191,7 +191,7 @@ async fn main() -> Result<(), forgefix::ApplicationError> {
         .await;
         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-        fix_handle.end_async().await?;
+        fix_handle.logout_async().await?;
     }
 
     Ok(())
